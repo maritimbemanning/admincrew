@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(npm show:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
