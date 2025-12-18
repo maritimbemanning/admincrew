@@ -75,11 +75,11 @@ async function analyze() {
   if (cvFiles && candidates) {
     let matches = 0
     for (const candidate of candidates) {
-      const nameParts = candidate.name.toLowerCase().split(' ')
+      const nameParts: string[] = candidate.name.toLowerCase().split(' ')
       const matchingFile = cvFiles.find(f => {
         const fileName = f.name.toLowerCase().replace(/_/g, ' ')
         // Check if any significant name part appears in filename
-        return nameParts.some(part => part.length > 2 && fileName.includes(part))
+        return nameParts.some((part: string) => part.length > 2 && fileName.includes(part))
       })
       if (matchingFile) {
         matches++
