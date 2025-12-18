@@ -5,13 +5,24 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function NewContractPage() {
+function NewContractContent() {
   const searchParams = useSearchParams()
   const assignmentId = searchParams.get('assignment_id') || undefined
   const organizationId = searchParams.get('organization_id') || undefined
   const candidateId = searchParams.get('candidate_id') || undefined
 
+  return (
+    <ContractForm
+      assignmentId={assignmentId}
+      organizationId={organizationId}
+      candidateId={candidateId}
+    />
+  )
+}
+
+export default function NewContractPage() {
   return (
     <div className="container py-6 max-w-4xl">
       <div className="mb-6">
@@ -27,11 +38,9 @@ export default function NewContractPage() {
         </p>
       </div>
 
-      <ContractForm
-        assignmentId={assignmentId}
-        organizationId={organizationId}
-        candidateId={candidateId}
-      />
+      <Suspense fallback={<div>Laster...</div>}>
+        <NewContractContent />
+      </Suspense>
     </div>
   )
 }

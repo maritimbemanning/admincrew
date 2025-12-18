@@ -7,8 +7,9 @@ import { ContactForm } from '@/components/crm/contact-form'
 import { useCreateCrmContact } from '@/hooks/use-crm-contacts'
 import type { ContactFormData } from '@/lib/validations/crm'
 import { toast } from 'sonner'
+import { Suspense } from 'react'
 
-export default function NewContactPage() {
+function NewContactContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const defaultStatus = searchParams.get('status') || undefined
@@ -52,6 +53,23 @@ export default function NewContactPage() {
   }
 
   return (
+    <div className="flex-1 overflow-auto p-4">
+      <div className="max-w-3xl mx-auto">
+        <ContactForm
+          onSubmit={handleSubmit}
+          onCancel={() => router.back()}
+          isLoading={createContact.isPending}
+          defaultStatus={defaultStatus}
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function NewContactPage() {
+  const router = useRouter()
+
+  return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Header */}
       <div className="border-b p-4">
@@ -69,16 +87,9 @@ export default function NewContactPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="max-w-3xl mx-auto">
-          <ContactForm
-            onSubmit={handleSubmit}
-            onCancel={() => router.back()}
-            isLoading={createContact.isPending}
-            defaultStatus={defaultStatus}
-          />
-        </div>
-      </div>
+      <Suspense fallback={<div className="p-4">Laster...</div>}>
+        <NewContactContent />
+      </Suspense>
     </div>
   )
 }
