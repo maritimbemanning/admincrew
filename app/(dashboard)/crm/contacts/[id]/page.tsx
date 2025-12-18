@@ -79,7 +79,7 @@ function formatRelativeDate(dateString: string): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) return 'I dag'
-  if (diffDays === 1) return 'I gar'
+  if (diffDays === 1) return 'I går'
   if (diffDays < 7) return `${diffDays} dager siden`
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} uker siden`
   return formatDate(dateString)
@@ -100,7 +100,7 @@ export default function ContactProfilePage({ params }: PageProps) {
 
   const handleDelete = async () => {
     if (!contact) return
-    if (!confirm('Er du sikker pa at du vil slette denne kontakten?')) return
+    if (!confirm('Er du sikker på at du vil slette denne kontakten?')) return
     await deleteContact.mutateAsync(contact.id)
     router.push('/crm/contacts')
   }

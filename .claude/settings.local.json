@@ -5,7 +5,10 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(cat:*)",
       "Bash(npm install:*)",
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

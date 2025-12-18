@@ -38,7 +38,7 @@ export default function CandidatesPage() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Kandidater</h1>
               <p className="text-sm text-muted-foreground">
-                Administrer og sok i kandidatbasen
+                Administrer og søk i kandidatbasen
               </p>
             </div>
             <Button asChild>
@@ -54,7 +54,7 @@ export default function CandidatesPage() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Sok pa navn, rolle, sertifikater..."
+                placeholder="Søk på navn, rolle, sertifikater..."
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
