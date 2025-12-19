@@ -69,9 +69,12 @@ const complianceConfig: Record<ComplianceStatus, { label: string; variant: 'defa
 }
 
 export function CandidateCard({ candidate }: CandidateCardProps) {
-  const availability = availabilityConfig[candidate.availabilityStatus]
-  const compliance = complianceConfig[candidate.complianceStatus]
-  const initials = `${candidate.firstName[0]}${candidate.lastName[0]}`
+  const availability = availabilityConfig[candidate.availabilityStatus] || availabilityConfig.available
+  const compliance = complianceConfig[candidate.complianceStatus] || complianceConfig.not_started
+  // Handle potentially empty names
+  const firstInitial = candidate.firstName?.[0] || ''
+  const lastInitial = candidate.lastName?.[0] || ''
+  const initials = (firstInitial + lastInitial).toUpperCase() || '??'
 
   return (
     <div className="group relative flex items-center gap-4 p-4 bg-card border rounded-lg hover:shadow-md transition-shadow">
@@ -91,7 +94,7 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
             href={`/candidates/${candidate.id}`}
             className="font-semibold hover:underline"
           >
-            {candidate.firstName} {candidate.lastName}
+            {candidate.firstName || ''} {candidate.lastName || ''}
           </Link>
 
           {/* Rating */}
@@ -110,7 +113,9 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
         </div>
 
         <div className="text-sm text-muted-foreground">
-          {candidate.primaryRole} • {candidate.experienceYears} år • {candidate.fylke}
+          {candidate.primaryRole || 'Ikke spesifisert'}
+          {candidate.experienceYears > 0 && ` • ${candidate.experienceYears} år`}
+          {candidate.fylke && ` • ${candidate.fylke}`}
         </div>
 
         {/* Certifications */}

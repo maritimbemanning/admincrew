@@ -76,10 +76,15 @@ export default function CandidateProfilePage({ params }: PageProps) {
     notFound()
   }
 
-  const availability = availabilityConfig[candidate.availability_status]
-  const compliance = complianceConfig[candidate.compliance_status]
+  const availability = availabilityConfig[candidate.availability_status] || availabilityConfig.available
+  const compliance = complianceConfig[candidate.compliance_status] || complianceConfig.not_started
   const ComplianceIcon = compliance.icon
-  const initials = `${candidate.first_name[0]}${candidate.last_name[0]}`
+  // Access raw DB fields for additional data
+  const raw = candidate._raw
+  // Handle potentially empty names
+  const firstInitial = candidate.first_name?.[0] || ''
+  const lastInitial = candidate.last_name?.[0] || ''
+  const initials = (firstInitial + lastInitial).toUpperCase() || '??'
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-auto">
@@ -258,15 +263,15 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   </CardContent>
                 </Card>
 
-                {/* CV Summary */}
-                {candidate.cv_summary && (
+                {/* CV Summary / Skills */}
+                {(raw?.skills || raw?.other_comp) && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">CV Sammendrag</CardTitle>
+                      <CardTitle className="text-lg">Ferdigheter</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {candidate.cv_summary}
+                        {raw?.skills || ''} {raw?.other_comp ? `\n\n${raw.other_comp}` : ''}
                       </p>
                     </CardContent>
                   </Card>
@@ -426,14 +431,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   <ComplianceIcon className="h-5 w-5" />
                   <span className="font-medium">{compliance.label}</span>
                 </div>
-                {candidate.compliance_checked_at && (
+                {raw?.verified_at && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    Sist sjekket: {format(new Date(candidate.compliance_checked_at), 'dd.MM.yyyy')}
+                    Sist verifisert: {format(new Date(raw.verified_at), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {candidate.compliance_expires_at && (
+                {raw?.verification_status && (
                   <div className="text-sm text-muted-foreground">
-                    Utloper: {format(new Date(candidate.compliance_expires_at), 'dd.MM.yyyy')}
+                    Status: {raw.verification_status}
                   </div>
                 )}
               </CardContent>
@@ -453,9 +458,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
                     Fra: {format(new Date(candidate.availability_date), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {candidate.availability_notes && (
+                {raw?.available_to && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    {candidate.availability_notes}
+                    Til: {format(new Date(raw.available_to), 'dd.MM.yyyy')}
+                  </div>
+                )}
+                {raw?.tilgjengelighet && (
+                  <div className="text-sm text-muted-foreground mt-2">
+                    {raw.tilgjengelighet}
                   </div>
                 )}
               </CardContent>
@@ -526,22 +536,24 @@ export default function CandidateProfilePage({ params }: PageProps) {
                 <CardTitle className="text-lg">Info</CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Opprettet</span>
-                  <span>{format(new Date(candidate.created_at), 'dd.MM.yyyy')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sist oppdatert</span>
-                  <span>{format(new Date(candidate.updated_at), 'dd.MM.yyyy')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Kilde</span>
-                  <span>{candidate.source}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Profil fullfort</span>
-                  <span>{candidate.profile_completeness}%</span>
-                </div>
+                {raw?.created_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Opprettet</span>
+                    <span>{format(new Date(raw.created_at), 'dd.MM.yyyy')}</span>
+                  </div>
+                )}
+                {raw?.updated_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Sist oppdatert</span>
+                    <span>{format(new Date(raw.updated_at), 'dd.MM.yyyy')}</span>
+                  </div>
+                )}
+                {raw?.source_table && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Kilde</span>
+                    <span>{raw.source_table}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

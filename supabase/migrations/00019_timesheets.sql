@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════
--- MIGRATION: 00017_timesheets.sql
+-- MIGRATION: 00019_timesheets.sql
 -- Timeregistrering
 -- ══════════════════════════════════════════════════════════════════════════════════════
 
@@ -69,6 +69,8 @@ CREATE INDEX idx_timesheets_assignment ON assignment_timesheets(assignment_id);
 CREATE INDEX idx_timesheets_period ON assignment_timesheets(period_start, period_end);
 CREATE INDEX idx_timesheets_status ON assignment_timesheets(status);
 CREATE INDEX idx_timesheets_invoice ON assignment_timesheets(invoice_id);
+CREATE INDEX idx_timesheets_pending ON assignment_timesheets(status)
+  WHERE status = 'submitted';
 
 -- Trigger
 CREATE TRIGGER timesheets_updated_at
@@ -98,6 +100,16 @@ CREATE POLICY "Employees can view own timesheets" ON assignment_timesheets
 CREATE POLICY "Employees can update draft timesheets" ON assignment_timesheets
   FOR UPDATE USING (
     status = 'draft' AND
+    EXISTS (
+      SELECT 1 FROM assignments
+      JOIN candidates ON candidates.id = assignments.candidate_id
+      WHERE assignments.id = assignment_timesheets.assignment_id
+      AND candidates.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Employees can insert timesheets" ON assignment_timesheets
+  FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM assignments
       JOIN candidates ON candidates.id = assignments.candidate_id

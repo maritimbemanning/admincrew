@@ -5,28 +5,169 @@
 export * from './database.types'
 
 // ═══════════════════════════════════════════════════════
-// CANDIDATE TYPES
+// RAW DATABASE CANDIDATE TYPE (actual schema)
 // ═══════════════════════════════════════════════════════
 
+/**
+ * This represents the ACTUAL candidates table schema in Supabase
+ * Different from the CLAUDE.md spec - this is what's really in the DB
+ */
+export interface CandidateDbRow {
+  id: string
+  created_at: string
+  updated_at: string | null
+
+  // Name fields - DB has both 'name' and first_name/last_name
+  name: string
+  first_name: string | null
+  last_name: string | null
+  navn: string | null  // Legacy Norwegian field
+
+  // Contact
+  email: string
+  phone: string | null
+  mobile: string | null
+
+  // Location
+  county: string | null
+  municipality: string | null
+  fylke: string | null
+  kommune: string | null
+  city: string | null
+  country: string | null
+  lokasjon: string | null  // Legacy field
+
+  // Roles - DB uses arrays and multiple fields
+  work_main: string[] | null
+  primary_rank: string | null
+  secondary_ranks: string[] | null
+  rolle: string | null  // Legacy field
+
+  // Experience
+  years_of_experience: number | null
+  erfaring: string | null  // Legacy field
+
+  // Status fields (actual DB values)
+  status: string | null  // pending, godkjent, ansatt, avslått
+  compliance_state: string | null  // pending, verified
+  employment_status: string | null
+  verification_status: string | null
+  is_active: boolean | null
+  pipeline_stage: string | null
+
+  // Availability
+  available_from: string | null
+  available_to: string | null
+  available_until: string | null
+  tilgjengelighet: string | null  // Legacy field
+  wants_temporary: string | null
+
+  // Certifications in DB
+  stcw_has: string | null
+  stcw_mod: string[] | null
+  stcw_confirm: boolean | null
+  stcw_confirmed: boolean | null
+  deck_has: string | null
+  deck_class: string | null
+  sertifikater: Record<string, unknown> | null  // JSONB field
+
+  // Skills and other
+  skills: string | null
+  other_comp: string | null
+  sectors: string[] | null
+  departments: string[] | null
+  positions: string[] | null
+  vessel_types: string[] | null
+
+  // Files
+  cv_key: string | null
+  certs_key: string | null
+
+  // Personal
+  nationality: string | null
+  date_of_birth: string | null
+
+  // Rates
+  expected_daily_rate: number | null
+  currency: string | null
+  preferred_contract_length_months: number | null
+
+  // Internal
+  internal_notes: string | null
+  flagged_reason: string | null
+
+  // Verification
+  bankid_verified_at: string | null
+  national_id_hash: string | null
+  ocr_confidence_score: number | null
+  verified_by: string | null
+  verified_at: string | null
+  gdpr_consent: boolean | null
+
+  // Tracking
+  submitted_at: string | null
+  source_ip: string | null
+  source_table: string | null
+  clerk_user_id: string | null
+  archived_at: string | null
+
+  // Encrypted fields (not used in UI)
+  is_encrypted: boolean | null
+  name_encrypted: string | null
+  email_encrypted: string | null
+  phone_encrypted: string | null
+  source_ip_encrypted: string | null
+}
+
+// ═══════════════════════════════════════════════════════
+// CANDIDATE TYPES (App interface)
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Normalized candidate interface for use in the app
+ * Components should use this, hooks transform CandidateDbRow to this
+ */
 export interface CandidateWithRelations {
   id: string
+  // Derived from name/first_name/last_name
   first_name: string
   last_name: string
+  full_name: string
   email: string
   phone: string | null
   avatar_url: string | null
+  // Derived from work_main/primary_rank/rolle
   primary_role: string
   secondary_roles: string[]
+  // Mapped from years_of_experience
   experience_years: number
+  // Mapped from status
   availability_status: import('./database.types').AvailabilityStatus
+  // From available_from
   availability_date: string | null
+  // Mapped from compliance_state
   compliance_status: import('./database.types').ComplianceStatus
+  // May not exist in DB
   internal_rating: number | null
+  // May not exist in DB
   tags: string[]
   fylke: string | null
+  kommune: string | null
+  // Certifications (inline from DB fields)
+  stcw_has: string | null
+  stcw_mod: string[] | null
+  deck_has: string | null
+  deck_class: string | null
+  // Sectors
+  sectors: string[]
+  // Internal
+  internal_notes: string | null
+  // Optional relations (may not be loaded)
   certifications?: import('./database.types').CandidateCertification[]
   documents?: import('./database.types').CandidateDocument[]
   pools?: import('./database.types').CandidatePool[]
+  // Raw DB row for access to all fields
+  _raw?: CandidateDbRow
 }
 
 export interface CandidateFilters {

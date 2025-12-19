@@ -2,14 +2,16 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import type {
-  Candidate,
-  CandidateCertification,
-  CandidatePool,
-  AvailabilityStatus,
-  ComplianceStatus
-} from '@/types/database.types'
-import type { CandidateFilters, CandidateSort, CandidateWithRelations } from '@/types'
+import type { AvailabilityStatus, ComplianceStatus } from '@/types/database.types'
+import type { CandidateFilters, CandidateSort, CandidateWithRelations, CandidateDbRow } from '@/types'
+import {
+  mapDbStatusToAvailability,
+  mapDbComplianceState,
+  mapAvailabilityToDbStatus,
+  parseFullName,
+  getDisplayName,
+  getPrimaryRole,
+} from '@/lib/utils/status-mapping'
 
 // ═══════════════════════════════════════════════════════
 // TYPES
@@ -44,6 +46,56 @@ export const candidateKeys = {
 }
 
 // ═══════════════════════════════════════════════════════
+// TRANSFORM FUNCTION
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Transform raw database row to normalized CandidateWithRelations
+ */
+function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
+  // Parse name - DB has 'name' field, plus optional first_name/last_name
+  const { firstName, lastName } = parseFullName(row.name)
+  const derivedFirstName = row.first_name || firstName
+  const derivedLastName = row.last_name || lastName
+  const fullName = getDisplayName(row.name, row.first_name, row.last_name)
+
+  // Get primary role from work_main array or fallback fields
+  const primaryRole = getPrimaryRole(row.work_main, row.primary_rank, row.rolle)
+
+  // Map status fields
+  const availabilityStatus = mapDbStatusToAvailability(row.status)
+  const complianceStatus = mapDbComplianceState(row.compliance_state)
+
+  return {
+    id: row.id,
+    first_name: derivedFirstName,
+    last_name: derivedLastName,
+    full_name: fullName,
+    email: row.email,
+    phone: row.phone || row.mobile,
+    avatar_url: null, // DB doesn't have avatar_url
+    primary_role: primaryRole,
+    secondary_roles: row.secondary_ranks || row.work_main?.slice(1) || [],
+    experience_years: row.years_of_experience || 0,
+    availability_status: availabilityStatus,
+    availability_date: row.available_from,
+    compliance_status: complianceStatus,
+    internal_rating: null, // DB doesn't have internal_rating
+    tags: [], // DB doesn't have tags array
+    fylke: row.fylke || row.county,
+    kommune: row.kommune || row.municipality,
+    stcw_has: row.stcw_has,
+    stcw_mod: row.stcw_mod,
+    deck_has: row.deck_has,
+    deck_class: row.deck_class,
+    sectors: row.sectors || [],
+    internal_notes: row.internal_notes,
+    // Store raw for access to all fields
+    _raw: row,
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 // FETCH FUNCTION
 // ═══════════════════════════════════════════════════════
 
@@ -51,14 +103,11 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   const supabase = createClient()
   const { filters, sort, page = 1, pageSize = 25, poolId } = options
 
-  // Start building query
+  // Start building query - select all columns, no joins
+  // (candidate_certifications table may not exist in actual DB)
   let query = supabase
     .from('candidates')
-    .select(`
-      *,
-      certifications:candidate_certifications(*),
-      documents:candidate_documents(*)
-    `, { count: 'exact' })
+    .select('*', { count: 'exact' })
     .is('archived_at', null)
 
   // Pool filter - join through pool_memberships
@@ -78,65 +127,78 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     }
   }
 
-  // Text search
+  // Text search - use actual DB columns
   if (filters?.search) {
     const searchTerm = `%${filters.search}%`
-    query = query.or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},primary_role.ilike.${searchTerm}`)
+    // Search in name, email, and work_main array
+    query = query.or(`name.ilike.${searchTerm},email.ilike.${searchTerm},primary_rank.ilike.${searchTerm},first_name.ilike.${searchTerm},last_name.ilike.${searchTerm}`)
   }
 
-  // Role filter
+  // Role filter - search in work_main array
   if (filters?.roles && filters.roles.length > 0) {
-    query = query.in('primary_role', filters.roles)
+    // Use overlaps for array column or filter primary_rank
+    query = query.or(`work_main.ov.{${filters.roles.join(',')}},primary_rank.in.(${filters.roles.join(',')})`)
   }
 
-  // Availability filter
+  // Availability filter - map to actual DB status values
   if (filters?.availability && filters.availability.length > 0) {
-    query = query.in('availability_status', filters.availability)
+    // Map app status values to DB values
+    const dbStatuses = filters.availability.map(status => {
+      switch (status) {
+        case 'available': return 'godkjent'
+        case 'on_assignment': return 'ansatt'
+        case 'available_soon': return 'pending'
+        case 'unavailable': return 'avslått'
+        case 'inactive': return 'inaktiv'
+        default: return status
+      }
+    })
+    query = query.in('status', dbStatuses)
   }
 
-  // Compliance filter
+  // Compliance filter - map to actual DB compliance_state values
   if (filters?.compliance && filters.compliance.length > 0) {
-    query = query.in('compliance_status', filters.compliance)
+    const dbStates = filters.compliance.map(status => {
+      switch (status) {
+        case 'approved': return 'verified'
+        case 'review_pending': return 'pending'
+        default: return status
+      }
+    })
+    query = query.in('compliance_state', dbStates)
   }
 
-  // Experience filter
+  // Experience filter - use years_of_experience column
   if (filters?.experience?.min !== undefined) {
-    query = query.gte('experience_years', filters.experience.min)
+    query = query.gte('years_of_experience', filters.experience.min)
   }
   if (filters?.experience?.max !== undefined) {
-    query = query.lte('experience_years', filters.experience.max)
+    query = query.lte('years_of_experience', filters.experience.max)
   }
 
-  // Location filter
+  // Location filter - try both fylke and county columns
   if (filters?.location?.fylke && filters.location.fylke.length > 0) {
-    query = query.in('fylke', filters.location.fylke)
+    query = query.or(`fylke.in.(${filters.location.fylke.join(',')}),county.in.(${filters.location.fylke.join(',')})`)
   }
 
-  // Rating filter
-  if (filters?.rating?.min !== undefined) {
-    query = query.gte('internal_rating', filters.rating.min)
-  }
+  // Rating filter - DB doesn't have internal_rating, skip
+  // Tags filter - DB doesn't have tags array, skip
 
-  // Tags filter
-  if (filters?.tags && filters.tags.length > 0) {
-    query = query.contains('tags', filters.tags)
-  }
-
-  // Sorting
+  // Sorting - map to actual DB columns
   const sortField = sort?.field || 'updated_at'
   const sortDirection = sort?.direction || 'desc'
 
   const sortMapping: Record<string, string> = {
-    name: 'first_name',
-    role: 'primary_role',
-    experience: 'experience_years',
-    availability: 'availability_status',
-    rating: 'internal_rating',
+    name: 'name',
+    role: 'primary_rank',
+    experience: 'years_of_experience',
+    availability: 'status',
+    rating: 'created_at', // Fallback since no rating
     created_at: 'created_at',
     updated_at: 'updated_at',
   }
 
-  const dbSortField = sortMapping[sortField] || 'updated_at'
+  const dbSortField = sortMapping[sortField] || 'created_at'
   query = query.order(dbSortField, { ascending: sortDirection === 'asc', nullsFirst: false })
 
   // Pagination
@@ -155,26 +217,10 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   const total = count || 0
   const totalPages = Math.ceil(total / pageSize)
 
-  // Transform to CandidateWithRelations
-  const candidates: CandidateWithRelations[] = (data || []).map(candidate => ({
-    id: candidate.id,
-    first_name: candidate.first_name,
-    last_name: candidate.last_name,
-    email: candidate.email,
-    phone: candidate.phone,
-    avatar_url: candidate.avatar_url,
-    primary_role: candidate.primary_role,
-    secondary_roles: candidate.secondary_roles || [],
-    experience_years: candidate.experience_years || 0,
-    availability_status: candidate.availability_status as AvailabilityStatus,
-    availability_date: candidate.availability_date,
-    compliance_status: candidate.compliance_status as ComplianceStatus,
-    internal_rating: candidate.internal_rating,
-    tags: candidate.tags || [],
-    fylke: candidate.fylke,
-    certifications: candidate.certifications as CandidateCertification[] || [],
-    documents: candidate.documents || [],
-  }))
+  // Transform to CandidateWithRelations using mapping functions
+  const candidates: CandidateWithRelations[] = (data || []).map(row =>
+    transformCandidate(row as unknown as CandidateDbRow)
+  )
 
   return { candidates, total, page, pageSize, totalPages }
 }
@@ -209,12 +255,15 @@ export function useUpdateCandidateAvailability() {
       status: AvailabilityStatus
       date?: string
     }) => {
+      // Map app status to DB status
+      const dbStatus = mapAvailabilityToDbStatus(status)
+
       const { data, error } = await supabase
         .from('candidates')
         .update({
-          availability_status: status,
-          availability_date: date || null,
-          availability_updated_at: new Date().toISOString(),
+          status: dbStatus,
+          available_from: date || null,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', candidateId)
         .select()

@@ -252,6 +252,22 @@ export function LoadingSpinner({ className }: LoadingSkeletonProps) {
   )
 }
 
+// General LoadingSkeleton - wrapper that can be used for any loading state
+export function LoadingSkeleton({ className }: LoadingSkeletonProps) {
+  return (
+    <div className={cn('space-y-4', className)}>
+      <div className="flex items-center space-x-4">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-[250px]" />
+          <Skeleton className="h-4 w-[200px]" />
+        </div>
+      </div>
+      <Skeleton className="h-[200px] w-full" />
+    </div>
+  )
+}
+
 // Full page loading
 export function FullPageLoading() {
   return (
@@ -263,3 +279,4 @@ export function FullPageLoading() {
     </div>
   )
 }
+

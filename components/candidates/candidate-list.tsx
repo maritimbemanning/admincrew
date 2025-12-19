@@ -71,33 +71,48 @@ export function CandidateList({
         {data.totalPages > 1 && ` (side ${data.page} av ${data.totalPages})`}
       </div>
 
-      {data.candidates.map((candidate) => (
-        <CandidateCard
-          key={candidate.id}
-          candidate={{
-            id: candidate.id,
-            firstName: candidate.first_name,
-            lastName: candidate.last_name,
-            email: candidate.email,
-            phone: candidate.phone,
-            avatarUrl: candidate.avatar_url,
-            primaryRole: candidate.primary_role,
-            secondaryRoles: candidate.secondary_roles,
-            experienceYears: candidate.experience_years,
-            availabilityStatus: candidate.availability_status,
-            availabilityDate: candidate.availability_date,
-            complianceStatus: candidate.compliance_status,
-            internalRating: candidate.internal_rating,
-            tags: candidate.tags,
-            fylke: candidate.fylke,
-            certifications: (candidate.certifications || []).map((cert) => ({
-              code: cert.code,
-              name: cert.name,
-              expiryDate: cert.expiry_date || '',
-            })),
-          }}
-        />
-      ))}
+      {data.candidates.map((candidate) => {
+        // Build certifications from inline DB fields
+        const certifications: Array<{ code: string; name: string; expiryDate: string }> = []
+        if (candidate.deck_class) {
+          certifications.push({ code: candidate.deck_class, name: `Dekk ${candidate.deck_class}`, expiryDate: '' })
+        }
+        if (candidate.stcw_has) {
+          certifications.push({ code: 'STCW', name: 'STCW', expiryDate: '' })
+        }
+        if (candidate.stcw_mod && candidate.stcw_mod.length > 0) {
+          candidate.stcw_mod.forEach(mod => {
+            certifications.push({ code: mod, name: mod, expiryDate: '' })
+          })
+        }
+        if (candidate.deck_has) {
+          certifications.push({ code: candidate.deck_has, name: candidate.deck_has, expiryDate: '' })
+        }
+
+        return (
+          <CandidateCard
+            key={candidate.id}
+            candidate={{
+              id: candidate.id,
+              firstName: candidate.first_name,
+              lastName: candidate.last_name,
+              email: candidate.email,
+              phone: candidate.phone,
+              avatarUrl: candidate.avatar_url,
+              primaryRole: candidate.primary_role,
+              secondaryRoles: candidate.secondary_roles,
+              experienceYears: candidate.experience_years,
+              availabilityStatus: candidate.availability_status,
+              availabilityDate: candidate.availability_date,
+              complianceStatus: candidate.compliance_status,
+              internalRating: candidate.internal_rating,
+              tags: candidate.tags,
+              fylke: candidate.fylke,
+              certifications,
+            }}
+          />
+        )
+      })}
     </div>
   )
 }

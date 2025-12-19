@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════
--- MIGRATION: 00018_invoices.sql
+-- MIGRATION: 00020_invoices.sql
 -- Fakturaer
 -- ══════════════════════════════════════════════════════════════════════════════════════
 
@@ -82,7 +82,9 @@ CREATE INDEX idx_invoices_number ON invoices(invoice_number);
 CREATE INDEX idx_invoices_org ON invoices(organization_id);
 CREATE INDEX idx_invoices_status ON invoices(status);
 CREATE INDEX idx_invoices_due ON invoices(due_date) WHERE status IN ('sent', 'overdue');
+CREATE INDEX idx_invoices_tripletex ON invoices(tripletex_id) WHERE tripletex_id IS NOT NULL;
 CREATE INDEX idx_invoice_lines_invoice ON invoice_lines(invoice_id);
+CREATE INDEX idx_invoice_lines_assignment ON invoice_lines(assignment_id);
 
 -- Trigger
 CREATE TRIGGER invoices_updated_at
