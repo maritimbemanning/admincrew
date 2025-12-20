@@ -4,14 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { AvailabilityStatus, ComplianceStatus } from '@/types/database.types'
 import type { CandidateFilters, CandidateSort, CandidateWithRelations, CandidateDbRow } from '@/types'
-import {
-  mapDbStatusToAvailability,
-  mapDbComplianceState,
-  mapAvailabilityToDbStatus,
-  parseFullName,
-  getDisplayName,
-  getPrimaryRole,
-} from '@/lib/utils/status-mapping'
 
 // ═══════════════════════════════════════════════════════
 // TYPES
@@ -51,45 +43,33 @@ export const candidateKeys = {
 
 /**
  * Transform raw database row to normalized CandidateWithRelations
+ * DB now has correct column names matching CLAUDE.md spec
  */
 function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
-  // Parse name - DB has 'name' field, plus optional first_name/last_name
-  const { firstName, lastName } = parseFullName(row.name)
-  const derivedFirstName = row.first_name || firstName
-  const derivedLastName = row.last_name || lastName
-  const fullName = getDisplayName(row.name, row.first_name, row.last_name)
-
-  // Get primary role from work_main array or fallback fields
-  const primaryRole = getPrimaryRole(row.work_main, row.primary_rank, row.rolle)
-
-  // Map status fields
-  const availabilityStatus = mapDbStatusToAvailability(row.status)
-  const complianceStatus = mapDbComplianceState(row.compliance_state)
+  // DB has proper columns now - read directly
+  const fullName = row.name || `${row.first_name} ${row.last_name}`.trim()
 
   return {
     id: row.id,
-    first_name: derivedFirstName,
-    last_name: derivedLastName,
+    first_name: row.first_name || '',
+    last_name: row.last_name || '',
     full_name: fullName,
     email: row.email,
-    phone: row.phone || row.mobile,
-    avatar_url: null, // DB doesn't have avatar_url
-    primary_role: primaryRole,
-    secondary_roles: row.secondary_ranks || row.work_main?.slice(1) || [],
-    experience_years: row.years_of_experience || 0,
-    availability_status: availabilityStatus,
-    availability_date: row.available_from,
-    compliance_status: complianceStatus,
-    internal_rating: null, // DB doesn't have internal_rating
-    tags: [], // DB doesn't have tags array
-    fylke: row.fylke || row.county,
-    kommune: row.kommune || row.municipality,
-    stcw_has: row.stcw_has,
-    stcw_mod: row.stcw_mod,
-    deck_has: row.deck_has,
-    deck_class: row.deck_class,
+    phone: row.phone || row.phone_secondary || null,
+    avatar_url: row.avatar_url || null,
+    primary_role: row.primary_role || 'Ikke spesifisert',
+    secondary_roles: row.secondary_roles || [],
+    experience_years: row.experience_years || 0,
+    availability_status: row.availability_status || 'available',
+    availability_date: row.availability_date || null,
+    compliance_status: row.compliance_status || 'not_started',
+    internal_rating: row.internal_rating || null,
+    tags: row.tags || [],
+    fylke: row.fylke || null,
+    kommune: row.kommune || null,
     sectors: row.sectors || [],
-    internal_notes: row.internal_notes,
+    internal_notes: row.internal_notes || null,
+    cv_summary: row.cv_summary || null,
     // Store raw for access to all fields
     _raw: row,
   }
@@ -255,14 +235,11 @@ export function useUpdateCandidateAvailability() {
       status: AvailabilityStatus
       date?: string
     }) => {
-      // Map app status to DB status
-      const dbStatus = mapAvailabilityToDbStatus(status)
-
       const { data, error } = await supabase
         .from('candidates')
         .update({
-          status: dbStatus,
-          available_from: date || null,
+          availability_status: status,
+          availability_date: date || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', candidateId)

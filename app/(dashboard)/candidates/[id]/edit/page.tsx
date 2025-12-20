@@ -34,39 +34,39 @@ export default function EditCandidatePage({ params }: EditCandidatePageProps) {
     last_name: candidate.last_name,
     email: candidate.email,
     phone: candidate.phone || undefined,
-    phone_secondary: raw?.mobile || undefined,
+    phone_secondary: raw?.phone_secondary || undefined,
     date_of_birth: raw?.date_of_birth || undefined,
     nationality: raw?.nationality || undefined,
-    national_id_number: raw?.national_id_hash || undefined,
-    address_street: undefined, // Not in actual DB
-    address_postal_code: undefined, // Not in actual DB
-    address_city: raw?.city || undefined,
-    address_country: raw?.country || 'NO',
+    national_id_number: raw?.national_id_number || undefined,
+    address_street: raw?.address_street || undefined,
+    address_postal_code: raw?.address_postal_code || undefined,
+    address_city: raw?.address_city || undefined,
+    address_country: raw?.address_country || 'NO',
     fylke: candidate.fylke || undefined,
     kommune: candidate.kommune || undefined,
     primary_role: candidate.primary_role,
     secondary_roles: candidate.secondary_roles || [],
     experience_years: candidate.experience_years || 0,
-    languages: [{ code: 'no', level: 'native' as const }], // Not in actual DB
+    languages: [{ code: 'no', level: 'native' as const }], // Default - actual stored in raw.languages
     sectors: candidate.sectors || [],
-    cv_summary: raw?.skills || undefined,
+    cv_summary: candidate.cv_summary || undefined,
     availability_status: candidate.availability_status,
     availability_date: candidate.availability_date || undefined,
-    availability_notes: raw?.tilgjengelighet || undefined,
-    rotation_preferred: [], // Not in actual DB
-    rotation_max_weeks_on: undefined, // Not in actual DB
-    rotation_min_weeks_off: undefined, // Not in actual DB
-    rotation_flexible: true, // Not in actual DB
-    salary_min_monthly_nok: undefined, // Not in actual DB
-    salary_preferred_monthly_nok: undefined, // Not in actual DB
-    salary_negotiable: true, // Not in actual DB
-    location_preferred_regions: [], // Not in actual DB
-    location_willing_to_relocate: false, // Not in actual DB
+    availability_notes: raw?.availability_notes || undefined,
+    rotation_preferred: raw?.rotation_preferred || [],
+    rotation_max_weeks_on: raw?.rotation_max_weeks_on || undefined,
+    rotation_min_weeks_off: raw?.rotation_min_weeks_off || undefined,
+    rotation_flexible: raw?.rotation_flexible ?? true,
+    salary_min_monthly_nok: raw?.salary_min_monthly_nok || undefined,
+    salary_preferred_monthly_nok: raw?.salary_preferred_monthly_nok || undefined,
+    salary_negotiable: raw?.salary_negotiable ?? true,
+    location_preferred_regions: raw?.location_preferred_regions || [],
+    location_willing_to_relocate: raw?.location_willing_to_relocate ?? false,
     internal_rating: candidate.internal_rating || undefined,
     internal_notes: candidate.internal_notes || undefined,
     tags: candidate.tags || [],
     compliance_status: candidate.compliance_status,
-    compliance_notes: raw?.flagged_reason || undefined,
+    compliance_notes: raw?.compliance_notes || undefined,
   }
 
   return (

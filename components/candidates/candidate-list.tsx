@@ -145,21 +145,13 @@ export function CandidateList({
 
       {/* Candidate cards */}
       {data.candidates.map((candidate) => {
-        const certifications: Array<{ code: string; name: string; expiryDate: string }> = []
-        if (candidate.deck_class) {
-          certifications.push({ code: candidate.deck_class, name: `Dekk ${candidate.deck_class}`, expiryDate: '' })
-        }
-        if (candidate.stcw_has) {
-          certifications.push({ code: 'STCW', name: 'STCW', expiryDate: '' })
-        }
-        if (candidate.stcw_mod && candidate.stcw_mod.length > 0) {
-          candidate.stcw_mod.forEach(mod => {
-            certifications.push({ code: mod, name: mod, expiryDate: '' })
-          })
-        }
-        if (candidate.deck_has) {
-          certifications.push({ code: candidate.deck_has, name: candidate.deck_has, expiryDate: '' })
-        }
+        // Sertifikater hentes fra certifications-relasjonen når den er lastet
+        const certifications: Array<{ code: string; name: string; expiryDate: string }> = 
+          candidate.certifications?.map(cert => ({
+            code: cert.code || '',
+            name: cert.name || cert.code || '',
+            expiryDate: cert.expiry_date || ''
+          })) || []
 
         return (
           <CandidateCard

@@ -263,15 +263,15 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   </CardContent>
                 </Card>
 
-                {/* CV Summary / Skills */}
-                {(raw?.skills || raw?.other_comp) && (
+                {/* CV Summary */}
+                {candidate.cv_summary && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Ferdigheter</CardTitle>
+                      <CardTitle className="text-lg">CV Sammendrag</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {raw?.skills || ''} {raw?.other_comp ? `\n\n${raw.other_comp}` : ''}
+                        {candidate.cv_summary}
                       </p>
                     </CardContent>
                   </Card>
@@ -431,14 +431,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   <ComplianceIcon className="h-5 w-5" />
                   <span className="font-medium">{compliance.label}</span>
                 </div>
-                {raw?.verified_at && (
+                {raw?.compliance_checked_at && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    Sist verifisert: {format(new Date(raw.verified_at), 'dd.MM.yyyy')}
+                    Sist sjekket: {format(new Date(raw.compliance_checked_at), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {raw?.verification_status && (
+                {raw?.compliance_notes && (
                   <div className="text-sm text-muted-foreground">
-                    Status: {raw.verification_status}
+                    Merknad: {raw.compliance_notes}
                   </div>
                 )}
               </CardContent>
@@ -458,14 +458,9 @@ export default function CandidateProfilePage({ params }: PageProps) {
                     Fra: {format(new Date(candidate.availability_date), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {raw?.available_to && (
+                {raw?.availability_notes && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    Til: {format(new Date(raw.available_to), 'dd.MM.yyyy')}
-                  </div>
-                )}
-                {raw?.tilgjengelighet && (
-                  <div className="text-sm text-muted-foreground mt-2">
-                    {raw.tilgjengelighet}
+                    {raw.availability_notes}
                   </div>
                 )}
               </CardContent>
@@ -548,10 +543,10 @@ export default function CandidateProfilePage({ params }: PageProps) {
                     <span>{format(new Date(raw.updated_at), 'dd.MM.yyyy')}</span>
                   </div>
                 )}
-                {raw?.source_table && (
+                {raw?.source && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Kilde</span>
-                    <span>{raw.source_table}</span>
+                    <span>{raw.source}</span>
                   </div>
                 )}
               </CardContent>
