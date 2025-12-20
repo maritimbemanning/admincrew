@@ -15,6 +15,7 @@ import {
   Search,
   UserCircle,
   LogOut,
+  Inbox,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -51,6 +52,11 @@ const navigation = [
     title: 'Dashboard',
     icon: LayoutDashboard,
     href: '/dashboard',
+  },
+  {
+    title: 'Innboks',
+    icon: Inbox,
+    href: '/inbox',
   },
   {
     title: 'Kandidater',

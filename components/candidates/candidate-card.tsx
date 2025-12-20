@@ -49,6 +49,8 @@ interface CandidateCardProps {
     fylke: string | null
     certifications: Certification[]
   }
+  isSelected?: boolean
+  onSelectChange?: (checked: boolean) => void
 }
 
 const availabilityConfig: Record<AvailabilityStatus, { label: string; color: string; dot: string }> = {
@@ -68,7 +70,7 @@ const complianceConfig: Record<ComplianceStatus, { label: string; variant: 'defa
   rejected: { label: 'Avvist', variant: 'destructive' },
 }
 
-export function CandidateCard({ candidate }: CandidateCardProps) {
+export function CandidateCard({ candidate, isSelected, onSelectChange }: CandidateCardProps) {
   const availability = availabilityConfig[candidate.availabilityStatus] || availabilityConfig.available
   const compliance = complianceConfig[candidate.complianceStatus] || complianceConfig.not_started
   // Handle potentially empty names
@@ -79,7 +81,11 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
   return (
     <div className="group relative flex items-center gap-4 p-4 bg-card border rounded-lg hover:shadow-md transition-shadow">
       {/* Checkbox */}
-      <Checkbox className="opacity-0 group-hover:opacity-100 transition-opacity" />
+      <Checkbox 
+        checked={isSelected}
+        onCheckedChange={(checked) => onSelectChange?.(checked === true)}
+        aria-label={`Velg ${candidate.firstName} ${candidate.lastName}`}
+      />
 
       {/* Avatar */}
       <Avatar className="h-12 w-12">

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useCallback } from 'react'
 import { CandidateList } from '@/components/candidates/candidate-list'
-import { CandidateFilters } from '@/components/candidates/candidate-filters'
+import { CandidateFilters, type ActiveFilter } from '@/components/candidates/candidate-filters'
 import { PoolsSidebar } from '@/components/candidates/pools-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,12 +15,40 @@ export default function CandidatesPage() {
   const [activePoolId, setActivePoolId] = useState<string | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([])
 
   const debouncedSearch = useDebounce(searchQuery, 300)
 
+  // Build filters object from active filters
   const filters: CandidateFiltersType = {
     search: debouncedSearch || undefined,
   }
+
+  // Add filters from activeFilters state
+  activeFilters.forEach(filter => {
+    if (filter.type === 'role') {
+      filters.roles = [...(filters.roles || []), filter.value]
+    } else if (filter.type === 'availability') {
+      filters.availability = [...(filters.availability || []), filter.value as CandidateFiltersType['availability'] extends (infer T)[] | undefined ? T : never]
+    } else if (filter.type === 'compliance') {
+      filters.compliance = [...(filters.compliance || []), filter.value as CandidateFiltersType['compliance'] extends (infer T)[] | undefined ? T : never]
+    }
+  })
+
+  const handleRemoveFilter = useCallback((filterId: string) => {
+    setActiveFilters(prev => prev.filter(f => f.id !== filterId))
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [])
+
+  const handleClearAllFilters = useCallback(() => {
+    setActiveFilters([])
+    setCurrentPage(1)
+  }, [])
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
@@ -86,7 +114,11 @@ export default function CandidatesPage() {
           </div>
 
           {/* Active Filters */}
-          <CandidateFilters />
+          <CandidateFilters 
+            filters={activeFilters}
+            onRemoveFilter={handleRemoveFilter}
+            onClearAll={handleClearAllFilters}
+          />
         </div>
 
         {/* Candidate List */}
@@ -95,6 +127,8 @@ export default function CandidatesPage() {
             <CandidateList
               filters={filters}
               poolId={activePoolId}
+              page={currentPage}
+              onPageChange={handlePageChange}
             />
           </Suspense>
         </div>

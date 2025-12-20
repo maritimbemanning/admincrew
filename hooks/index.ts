@@ -32,6 +32,12 @@ export * from './use-contracts'
 // Timesheets
 export * from './use-timesheets'
 
+// Portal Inbox (bluecrew.no data)
+export * from './use-job-applications'
+export * from './use-interest-leads'
+export * from './use-staffing-needs'
+export * from './use-portal-contacts'
+
 // QMS
 export * from './use-qms-documents'
 export * from './use-qms-nc'
