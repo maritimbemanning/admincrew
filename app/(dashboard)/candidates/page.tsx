@@ -6,9 +6,16 @@ import { CandidateFilters, type ActiveFilter } from '@/components/candidates/can
 import { PoolsSidebar } from '@/components/candidates/pools-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, LayoutGrid, List, Filter } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Plus, Search, LayoutGrid, List, Filter, ArrowUpDown } from 'lucide-react'
 import Link from 'next/link'
-import type { CandidateFilters as CandidateFiltersType } from '@/types'
+import type { CandidateFilters as CandidateFiltersType, CandidateSort } from '@/types'
 import { useDebounce } from '@/hooks/use-debounce'
 
 export default function CandidatesPage() {
@@ -17,6 +24,7 @@ export default function CandidatesPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [currentPage, setCurrentPage] = useState(1)
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([])
+  const [sort, setSort] = useState<CandidateSort>({ field: 'updated_at', direction: 'desc' })
 
   const debouncedSearch = useDebounce(searchQuery, 300)
 
@@ -89,6 +97,31 @@ export default function CandidatesPage() {
               />
             </div>
 
+            {/* Sort dropdown */}
+            <Select
+              value={`${sort.field}-${sort.direction}`}
+              onValueChange={(value) => {
+                const [field, direction] = value.split('-') as [CandidateSort['field'], CandidateSort['direction']]
+                setSort({ field, direction })
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Sorter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_at-desc">Sist oppdatert</SelectItem>
+                <SelectItem value="created_at-desc">Nyeste først</SelectItem>
+                <SelectItem value="created_at-asc">Eldste først</SelectItem>
+                <SelectItem value="name-asc">Navn A-Å</SelectItem>
+                <SelectItem value="name-desc">Navn Å-A</SelectItem>
+                <SelectItem value="experience-desc">Mest erfaring</SelectItem>
+                <SelectItem value="experience-asc">Minst erfaring</SelectItem>
+                <SelectItem value="availability-asc">Tilgjengelighet</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button variant="outline" size="icon">
               <Filter className="h-4 w-4" />
             </Button>
@@ -127,6 +160,7 @@ export default function CandidatesPage() {
             <CandidateList
               filters={filters}
               poolId={activePoolId}
+              sort={sort}
               page={currentPage}
               onPageChange={handlePageChange}
             />

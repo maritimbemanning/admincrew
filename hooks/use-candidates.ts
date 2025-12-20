@@ -150,35 +150,42 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
 
   // Experience filter - use years_of_experience column
   if (filters?.experience?.min !== undefined) {
-    query = query.gte('years_of_experience', filters.experience.min)
+    query = query.gte('experience_years', filters.experience.min)
   }
   if (filters?.experience?.max !== undefined) {
-    query = query.lte('years_of_experience', filters.experience.max)
+    query = query.lte('experience_years', filters.experience.max)
   }
 
-  // Location filter - try both fylke and county columns
+  // Location filter
   if (filters?.location?.fylke && filters.location.fylke.length > 0) {
-    query = query.or(`fylke.in.(${filters.location.fylke.join(',')}),county.in.(${filters.location.fylke.join(',')})`)
+    query = query.in('fylke', filters.location.fylke)
   }
 
-  // Rating filter - DB doesn't have internal_rating, skip
-  // Tags filter - DB doesn't have tags array, skip
+  // Rating filter
+  if (filters?.rating?.min !== undefined) {
+    query = query.gte('internal_rating', filters.rating.min)
+  }
+
+  // Tags filter
+  if (filters?.tags && filters.tags.length > 0) {
+    query = query.overlaps('tags', filters.tags)
+  }
 
   // Sorting - map to actual DB columns
   const sortField = sort?.field || 'updated_at'
   const sortDirection = sort?.direction || 'desc'
 
   const sortMapping: Record<string, string> = {
-    name: 'name',
-    role: 'primary_rank',
-    experience: 'years_of_experience',
-    availability: 'status',
-    rating: 'created_at', // Fallback since no rating
+    name: 'first_name',
+    role: 'primary_role',
+    experience: 'experience_years',
+    availability: 'availability_status',
+    rating: 'internal_rating',
     created_at: 'created_at',
     updated_at: 'updated_at',
   }
 
-  const dbSortField = sortMapping[sortField] || 'created_at'
+  const dbSortField = sortMapping[sortField] || 'updated_at'
   query = query.order(dbSortField, { ascending: sortDirection === 'asc', nullsFirst: false })
 
   // Pagination
