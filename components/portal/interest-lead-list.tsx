@@ -1,14 +1,14 @@
 // components/portal/interest-lead-list.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { nb } from 'date-fns/locale'
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,31 +27,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  Search, 
-  MoreHorizontal, 
-  UserPlus, 
-  Eye, 
+import {
+  Search,
+  MoreHorizontal,
+  UserPlus,
+  Eye,
   Phone,
   Mail,
   Loader2,
   Ship,
-  Building2
 } from 'lucide-react'
-import { 
-  useInterestLeads, 
-  useUpdateLeadStatus,
-  useConvertLeadToCandidate
+import {
+  useInterestLeads,
+  useUpdateInterestStatus,
+  useConvertInterestToCandidate,
+  type InboxInterest
 } from '@/hooks'
-import { 
-  LEAD_STATUS_LABELS, 
-  LEAD_STATUS_COLORS,
-  LEAD_TYPE_LABELS,
-  type LeadStatus,
-  type InterestLead
-} from '@/types/portal'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+
+// Status labels and colors
+const STATUS_LABELS: Record<string, string> = {
+  new: 'Ny',
+  contacted: 'Kontaktet',
+  converted: 'Konvertert',
+  archived: 'Arkivert',
+  interesse: 'Interesse',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  new: 'bg-blue-100 text-blue-800',
+  contacted: 'bg-yellow-100 text-yellow-800',
+  converted: 'bg-green-100 text-green-800',
+  archived: 'bg-gray-100 text-gray-800',
+  interesse: 'bg-blue-100 text-blue-800',
+}
 
 interface InterestLeadListProps {
   onViewDetails?: (id: string) => void
@@ -59,24 +69,43 @@ interface InterestLeadListProps {
 
 export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  const { data: leads, isLoading } = useInterestLeads({
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    type: typeFilter === 'all' ? undefined : typeFilter,
-    search: search || undefined,
-  })
+  const { data: leads, isLoading } = useInterestLeads()
+  const updateStatus = useUpdateInterestStatus()
+  const convertToCandidate = useConvertInterestToCandidate()
 
-  const updateStatus = useUpdateLeadStatus()
-  const convertToCandidate = useConvertLeadToCandidate()
+  // Client-side filtering
+  const filteredLeads = useMemo(() => {
+    if (!leads) return []
 
-  const handleConvert = async (lead: InterestLead) => {
+    return leads.filter((lead) => {
+      // Status filter
+      if (statusFilter !== 'all' && lead.pipeline_status !== statusFilter) {
+        return false
+      }
+
+      // Search filter
+      if (search) {
+        const searchLower = search.toLowerCase()
+        return (
+          lead.name.toLowerCase().includes(searchLower) ||
+          lead.email.toLowerCase().includes(searchLower) ||
+          (lead.phone && lead.phone.toLowerCase().includes(searchLower)) ||
+          (lead.role && lead.role.toLowerCase().includes(searchLower))
+        )
+      }
+
+      return true
+    })
+  }, [leads, statusFilter, search])
+
+  const handleConvert = async (lead: InboxInterest) => {
     try {
-      const result = await convertToCandidate.mutateAsync(lead)
-      if (result.created) {
+      const result = await convertToCandidate.mutateAsync(lead.id)
+      if (result.isNew) {
         toast.success('Kandidat opprettet', {
-          description: `${lead.navn} er lagt til som kandidat`,
+          description: `${lead.name} er lagt til som kandidat`,
         })
       } else {
         toast.info('Kandidat finnes allerede', {
@@ -90,9 +119,9 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
     }
   }
 
-  const handleStatusChange = async (id: string, status: LeadStatus) => {
+  const handleStatusChange = async (id: string, status: string) => {
     try {
-      await updateStatus.mutateAsync({ id, status })
+      await updateStatus.mutateAsync({ id, pipeline_status: status })
       toast.success('Status oppdatert')
     } catch {
       toast.error('Kunne ikke oppdatere status')
@@ -124,22 +153,9 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
                 className="pl-8 w-50"
               />
             </div>
-            <Select 
-              value={typeFilter} 
-              onValueChange={setTypeFilter}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle typer</SelectItem>
-                <SelectItem value="sjomann">Sjømann</SelectItem>
-                <SelectItem value="rederi">Rederi</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select 
-              value={statusFilter} 
-              onValueChange={(v) => setStatusFilter(v as LeadStatus | 'all')}
+            <Select
+              value={statusFilter}
+              onValueChange={setStatusFilter}
             >
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="Status" />
@@ -156,61 +172,62 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {!leads || leads.length === 0 ? (
+        {filteredLeads.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             Ingen interesse-leads funnet
           </div>
         ) : (
           <div className="space-y-3">
-            {leads.map((lead) => (
+            {filteredLeads.map((lead) => (
               <div
                 key={lead.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <h4 className="font-medium truncate">{lead.navn}</h4>
-                    <Badge 
+                    <h4 className="font-medium truncate">{lead.name}</h4>
+                    <Badge
                       variant="secondary"
-                      className={cn(LEAD_STATUS_COLORS[(lead.status || 'new') as LeadStatus])}
+                      className={cn(STATUS_COLORS[lead.pipeline_status] || STATUS_COLORS.new)}
                     >
-                      {LEAD_STATUS_LABELS[(lead.status || 'new') as LeadStatus]}
+                      {STATUS_LABELS[lead.pipeline_status] || lead.pipeline_status}
                     </Badge>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      {lead.type === 'sjomann' ? (
+                    {lead.role && (
+                      <Badge variant="outline" className="flex items-center gap-1">
                         <Ship className="h-3 w-3" />
-                      ) : (
-                        <Building2 className="h-3 w-3" />
-                      )}
-                      {LEAD_TYPE_LABELS[lead.type || 'sjomann']}
-                    </Badge>
+                        {lead.role}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
-                      {lead.epost}
+                      {lead.email}
                     </span>
-                    {lead.telefon && (
+                    {lead.phone && (
                       <span className="flex items-center gap-1">
                         <Phone className="h-3 w-3" />
-                        {lead.telefon}
+                        {lead.phone}
                       </span>
                     )}
+                    {lead.experience && (
+                      <span>{lead.experience} års erfaring</span>
+                    )}
                   </div>
-                  {lead.melding && (
+                  {lead.notes && (
                     <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {lead.melding}
+                      {lead.notes}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(lead.created_at), { 
-                      addSuffix: true, 
-                      locale: nb 
+                    {formatDistanceToNow(new Date(lead.created_at), {
+                      addSuffix: true,
+                      locale: nb
                     })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {lead.status !== 'converted' && lead.type === 'sjofolk' && (
+                  {lead.pipeline_status !== 'converted' && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -237,7 +254,7 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
                         <Phone className="h-4 w-4 mr-2" />
                         Merk som kontaktet
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleStatusChange(lead.id, 'archived')}
                         className="text-muted-foreground"
                       >

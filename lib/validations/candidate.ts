@@ -176,26 +176,23 @@ const complianceStatusSchema = z.enum([
   'rejected',
 ])
 
-// Personal info schema
+// Personal info schema - matches actual DB columns
 export const personalInfoSchema = z.object({
   first_name: z.string().min(1, 'Fornavn er påkrevd'),
   last_name: z.string().min(1, 'Etternavn er påkrevd'),
   email: z.string().email('Ugyldig e-postadresse'),
   phone: z.string().optional().nullable(),
-  phone_secondary: z.string().optional().nullable(),
+  mobile: z.string().optional().nullable(),  // actual DB column
   date_of_birth: z.string().optional().nullable(),
   nationality: z.string().default('NO'),
-  national_id_number: z.string().optional().nullable(),
 })
 
-// Address schema
+// Address schema - matches actual DB columns
 export const addressSchema = z.object({
-  address_street: z.string().optional().nullable(),
-  address_postal_code: z.string().optional().nullable(),
-  address_city: z.string().optional().nullable(),
-  address_country: z.string().default('NO'),
   fylke: z.string().optional().nullable(),
   kommune: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),  // actual DB column
+  country: z.string().default('NO'),  // actual DB column
 })
 
 // Professional info schema
@@ -208,33 +205,27 @@ export const professionalInfoSchema = z.object({
   cv_summary: z.string().optional().nullable(),
 })
 
-// Availability schema
+// Availability schema - matches actual DB columns
 export const availabilitySchema = z.object({
   availability_status: availabilityStatusSchema.default('available'),
-  availability_date: z.string().optional().nullable(),
-  availability_notes: z.string().optional().nullable(),
+  availability_date: z.string().optional().nullable(),  // maps to available_from
+  available_until: z.string().optional().nullable(),  // actual DB column
 })
 
-// Rotation and salary schema
-export const rotationSalarySchema = z.object({
-  rotation_preferred: z.array(z.string()).default([]),
-  rotation_max_weeks_on: z.coerce.number().min(1).max(12).optional().nullable(),
-  rotation_min_weeks_off: z.coerce.number().min(1).max(12).optional().nullable(),
-  rotation_flexible: z.boolean().default(true),
-  salary_min_monthly_nok: z.coerce.number().min(0).optional().nullable(),
-  salary_preferred_monthly_nok: z.coerce.number().min(0).optional().nullable(),
-  salary_negotiable: z.boolean().default(true),
-  location_preferred_regions: z.array(z.string()).default([]),
-  location_willing_to_relocate: z.boolean().default(false),
+// Rate/Compensation schema - matches actual DB columns
+export const rateCompensationSchema = z.object({
+  expected_daily_rate: z.coerce.number().min(0).optional().nullable(),  // actual DB column
+  currency: z.string().default('NOK'),  // actual DB column
+  preferred_contract_length_months: z.coerce.number().min(1).max(24).optional().nullable(),  // actual DB column
 })
 
-// Internal (admin only) schema
+// Internal (admin only) schema - matches actual DB columns
 export const internalInfoSchema = z.object({
   internal_rating: z.coerce.number().min(1).max(5).optional().nullable(),
   internal_notes: z.string().optional().nullable(),
   tags: z.array(z.string()).default([]),
   compliance_status: complianceStatusSchema.default('not_started'),
-  compliance_notes: z.string().optional().nullable(),
+  flagged_reason: z.string().optional().nullable(),  // actual DB column (was compliance_notes)
 })
 
 // ═══════════════════════════════════════════════════════
@@ -250,8 +241,8 @@ export const candidateFormSchema = z.object({
   ...professionalInfoSchema.shape,
   // Availability
   ...availabilitySchema.shape,
-  // Rotation & Salary
-  ...rotationSalarySchema.shape,
+  // Rate/Compensation - actual DB columns
+  ...rateCompensationSchema.shape,
   // Internal
   ...internalInfoSchema.shape,
 })
@@ -259,45 +250,42 @@ export const candidateFormSchema = z.object({
 // Type inference
 export type CandidateFormData = z.infer<typeof candidateFormSchema>
 
-// Default values for new candidate
+// Default values for new candidate - matches actual DB columns
 export const defaultCandidateValues: Partial<CandidateFormData> = {
+  // Personal
   first_name: '',
   last_name: '',
   email: '',
   phone: null,
-  phone_secondary: null,
+  mobile: null,
   date_of_birth: null,
   nationality: 'NO',
-  national_id_number: null,
-  address_street: null,
-  address_postal_code: null,
-  address_city: null,
-  address_country: 'NO',
+  // Address
   fylke: null,
   kommune: null,
+  city: null,
+  country: 'NO',
+  // Professional
   primary_role: '',
   secondary_roles: [],
   experience_years: 0,
   languages: [{ code: 'no', level: 'native' }],
   sectors: [],
   cv_summary: null,
+  // Availability
   availability_status: 'available',
   availability_date: null,
-  availability_notes: null,
-  rotation_preferred: [],
-  rotation_max_weeks_on: null,
-  rotation_min_weeks_off: null,
-  rotation_flexible: true,
-  salary_min_monthly_nok: null,
-  salary_preferred_monthly_nok: null,
-  salary_negotiable: true,
-  location_preferred_regions: [],
-  location_willing_to_relocate: false,
+  available_until: null,
+  // Rate/Compensation
+  expected_daily_rate: null,
+  currency: 'NOK',
+  preferred_contract_length_months: null,
+  // Internal
   internal_rating: null,
   internal_notes: null,
   tags: [],
   compliance_status: 'not_started',
-  compliance_notes: null,
+  flagged_reason: null,
 }
 
 // ═══════════════════════════════════════════════════════

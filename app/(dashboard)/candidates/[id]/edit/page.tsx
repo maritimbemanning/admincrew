@@ -27,46 +27,49 @@ export default function EditCandidatePage({ params }: EditCandidatePageProps) {
   }
 
   // Transform candidate data to form data format
-  // Use _raw to access actual DB fields that aren't in the normalized type
+  // Use _raw to access actual DB fields
   const raw = candidate._raw
   const initialData: Partial<CandidateFormData> = {
+    // Identity - use raw fields that exist in actual DB
     first_name: candidate.first_name,
     last_name: candidate.last_name,
     email: candidate.email,
     phone: candidate.phone || undefined,
-    phone_secondary: raw?.phone_secondary || undefined,
+    mobile: raw?.mobile || undefined,
     date_of_birth: raw?.date_of_birth || undefined,
     nationality: raw?.nationality || undefined,
-    national_id_number: raw?.national_id_number || undefined,
-    address_street: raw?.address_street || undefined,
-    address_postal_code: raw?.address_postal_code || undefined,
-    address_city: raw?.address_city || undefined,
-    address_country: raw?.address_country || 'NO',
+
+    // Location - actual DB columns
     fylke: candidate.fylke || undefined,
     kommune: candidate.kommune || undefined,
+    city: raw?.city || undefined,
+    country: raw?.country || 'NO',
+
+    // Professional - actual DB columns
     primary_role: candidate.primary_role,
     secondary_roles: candidate.secondary_roles || [],
     experience_years: candidate.experience_years || 0,
-    languages: [{ code: 'no', level: 'native' as const }], // Default - actual stored in raw.languages
     sectors: candidate.sectors || [],
     cv_summary: candidate.cv_summary || undefined,
-    availability_status: candidate.availability_status,
+
+    // Availability - actual DB columns
+    availability_status: candidate.availability_status as CandidateFormData['availability_status'],
     availability_date: candidate.availability_date || undefined,
-    availability_notes: raw?.availability_notes || undefined,
-    rotation_preferred: raw?.rotation_preferred || [],
-    rotation_max_weeks_on: raw?.rotation_max_weeks_on || undefined,
-    rotation_min_weeks_off: raw?.rotation_min_weeks_off || undefined,
-    rotation_flexible: raw?.rotation_flexible ?? true,
-    salary_min_monthly_nok: raw?.salary_min_monthly_nok || undefined,
-    salary_preferred_monthly_nok: raw?.salary_preferred_monthly_nok || undefined,
-    salary_negotiable: raw?.salary_negotiable ?? true,
-    location_preferred_regions: raw?.location_preferred_regions || [],
-    location_willing_to_relocate: raw?.location_willing_to_relocate ?? false,
+    available_until: raw?.available_until || undefined,
+
+    // Rate/Compensation - actual DB columns
+    expected_daily_rate: raw?.expected_daily_rate || undefined,
+    currency: raw?.currency || 'NOK',
+    preferred_contract_length_months: raw?.preferred_contract_length_months || undefined,
+
+    // Internal - actual DB columns
     internal_rating: candidate.internal_rating || undefined,
     internal_notes: candidate.internal_notes || undefined,
     tags: candidate.tags || [],
-    compliance_status: candidate.compliance_status,
-    compliance_notes: raw?.compliance_notes || undefined,
+
+    // Compliance - actual DB columns
+    compliance_status: candidate.compliance_status as CandidateFormData['compliance_status'],
+    flagged_reason: raw?.flagged_reason || undefined,
   }
 
   return (

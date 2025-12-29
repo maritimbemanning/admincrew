@@ -1,14 +1,14 @@
 // components/portal/staffing-need-list.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { nb } from 'date-fns/locale'
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,33 +27,45 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  Search, 
-  MoreHorizontal, 
-  ArrowRight, 
-  Eye, 
+import {
+  Search,
+  MoreHorizontal,
+  ArrowRight,
+  Eye,
   Phone,
   Mail,
   Building2,
   Users,
-  Ship,
+  MapPin,
   Calendar,
   Loader2
 } from 'lucide-react'
-import { 
-  useStaffingNeeds, 
-  useUpdateStaffingNeedStatus,
-  useConvertToCustomerRequest
+import {
+  useStaffingNeeds,
+  useUpdateLeadStatus,
+  useConvertToCustomerRequest,
+  type InboxLead
 } from '@/hooks'
-import { 
-  STAFFING_STATUS_LABELS, 
-  STAFFING_STATUS_COLORS,
-  type StaffingNeedStatus,
-  type StaffingNeed
-} from '@/types/portal'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+
+// Status labels and colors for leads
+const STATUS_LABELS: Record<string, string> = {
+  new: 'Ny',
+  contacted: 'Kontaktet',
+  negotiating: 'Forhandler',
+  converted: 'Konvertert',
+  closed: 'Lukket',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  new: 'bg-blue-100 text-blue-800',
+  contacted: 'bg-yellow-100 text-yellow-800',
+  negotiating: 'bg-orange-100 text-orange-800',
+  converted: 'bg-green-100 text-green-800',
+  closed: 'bg-gray-100 text-gray-800',
+}
 
 interface StaffingNeedListProps {
   onViewDetails?: (id: string) => void
@@ -62,19 +74,40 @@ interface StaffingNeedListProps {
 export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StaffingNeedStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  const { data: needs, isLoading } = useStaffingNeeds({
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    search: search || undefined,
-  })
-
-  const updateStatus = useUpdateStaffingNeedStatus()
+  const { data: needs, isLoading } = useStaffingNeeds()
+  const updateStatus = useUpdateLeadStatus()
   const convertToRequest = useConvertToCustomerRequest()
 
-  const handleConvert = async (need: StaffingNeed) => {
+  // Client-side filtering
+  const filteredNeeds = useMemo(() => {
+    if (!needs) return []
+
+    return needs.filter((need) => {
+      // Status filter
+      if (statusFilter !== 'all' && need.status !== statusFilter) {
+        return false
+      }
+
+      // Search filter
+      if (search) {
+        const searchLower = search.toLowerCase()
+        return (
+          need.company.toLowerCase().includes(searchLower) ||
+          need.contact.toLowerCase().includes(searchLower) ||
+          need.email.toLowerCase().includes(searchLower) ||
+          (need.need_type && need.need_type.toLowerCase().includes(searchLower))
+        )
+      }
+
+      return true
+    })
+  }, [needs, statusFilter, search])
+
+  const handleConvert = async (need: InboxLead) => {
     try {
-      const result = await convertToRequest.mutateAsync(need)
+      const result = await convertToRequest.mutateAsync(need.id)
       toast.success('Kundeforespørsel opprettet', {
         description: 'Bemanningsbehov er konvertert til request',
         action: {
@@ -89,7 +122,7 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
     }
   }
 
-  const handleStatusChange = async (id: string, status: StaffingNeedStatus) => {
+  const handleStatusChange = async (id: string, status: string) => {
     try {
       await updateStatus.mutateAsync({ id, status })
       toast.success('Status oppdatert')
@@ -123,9 +156,9 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
                 className="pl-8 w-50"
               />
             </div>
-            <Select 
-              value={statusFilter} 
-              onValueChange={(v) => setStatusFilter(v as StaffingNeedStatus | 'all')}
+            <Select
+              value={statusFilter}
+              onValueChange={setStatusFilter}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Status" />
@@ -143,13 +176,13 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {!needs || needs.length === 0 ? (
+        {filteredNeeds.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             Ingen bemanningsbehov funnet
           </div>
         ) : (
           <div className="space-y-3">
-            {needs.map((need) => (
+            {filteredNeeds.map((need) => (
               <div
                 key={need.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -157,58 +190,63 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
                     <h4 className="font-medium truncate">
-                      {need.bedrift || need.kontakt_navn}
+                      {need.company}
                     </h4>
-                    <Badge 
+                    <Badge
                       variant="secondary"
-                      className={cn(STAFFING_STATUS_COLORS[need.status as StaffingNeedStatus])}
+                      className={cn(STATUS_COLORS[need.status] || STATUS_COLORS.new)}
                     >
-                      {STAFFING_STATUS_LABELS[need.status as StaffingNeedStatus]}
+                      {STATUS_LABELS[need.status] || need.status}
                     </Badge>
-                    {need.fartoytype && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Ship className="h-3 w-3" />
-                        {need.fartoytype}
+                    {need.need_type && (
+                      <Badge variant="outline">
+                        {need.need_type}
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    {need.bedrift && (
-                      <span className="flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />
-                        {need.kontakt_navn}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      {need.contact}
+                    </span>
                     <span className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
-                      {need.kontakt_epost}
+                      {need.email}
                     </span>
-                    {need.antall && (
+                    {need.phone && (
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {need.phone}
+                      </span>
+                    )}
+                    {need.num_people && (
                       <span className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        {need.antall} stk
+                        {need.num_people} stk
                       </span>
                     )}
                   </div>
-                  {/* stillinger er TEXT, ikke array */}
-                  {need.stillinger && (
-                    <div className="flex gap-1 mt-2">
-                      <Badge variant="outline" className="text-xs">
-                        {need.stillinger}
-                      </Badge>
-                    </div>
-                  )}
-                  {need.oppstart && (
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    {need.need_duration && (
+                      <span>Varighet: {need.need_duration}</span>
+                    )}
+                    {need.work_location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {need.work_location}
+                      </span>
+                    )}
+                  </div>
+                  {need.start_date && (
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      Oppstart: {format(new Date(need.oppstart), 'd. MMM yyyy', { locale: nb })}
-                      {need.rotasjon && ` • ${need.rotasjon}`}
+                      Oppstart: {format(new Date(need.start_date), 'd. MMM yyyy', { locale: nb })}
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Mottatt {formatDistanceToNow(new Date(need.created_at), { 
-                      addSuffix: true, 
-                      locale: nb 
+                    Mottatt {formatDistanceToNow(new Date(need.created_at), {
+                      addSuffix: true,
+                      locale: nb
                     })}
                   </p>
                 </div>
@@ -243,7 +281,7 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
                       <DropdownMenuItem onClick={() => handleStatusChange(need.id, 'negotiating')}>
                         Forhandler
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleStatusChange(need.id, 'closed')}
                         className="text-muted-foreground"
                       >

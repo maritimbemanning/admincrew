@@ -10,94 +10,103 @@ export * from './database.types'
 
 /**
  * This represents the ACTUAL candidates table schema in admincrew Supabase
- * Matches CLAUDE.md section 2.2 (00003_candidates.sql)
+ * Updated to match actual production database schema (2024-12)
  */
 export interface CandidateDbRow {
   id: string
-  user_id: string | null
-  legacy_id: string | null
-  legacy_source: string | null
-  
-  // Personalia
-  first_name: string
-  last_name: string
-  name: string | null  // Computed/legacy
+  created_at: string
+  updated_at: string | null
+
+  // Core identity - actual DB columns
+  name: string  // Primary name field in actual DB
   email: string
   phone: string | null
-  phone_secondary: string | null
-  
-  date_of_birth: string | null
-  nationality: string | null
-  national_id_number: string | null
-  
-  // Adresse
-  address_street: string | null
-  address_postal_code: string | null
-  address_city: string | null
-  address_country: string | null
-  fylke: string | null
+  mobile: string | null
+
+  // Legacy name fields (may be null)
+  first_name: string | null
+  last_name: string | null
+
+  // Location - actual DB columns
+  county: string | null
+  municipality: string | null
+  fylke: string | null  // Norwegian location
   kommune: string | null
+  city: string | null
+  country: string | null
+  nationality: string | null
+  date_of_birth: string | null
+
+  // Professional info - actual DB columns
+  primary_rank: string | null  // Actual column name for role
+  rolle: string | null  // Alternative role column
+  secondary_ranks: string[] | null
+  years_of_experience: number | null  // Actual column name
+  erfaring: string | null  // Norwegian experience text
+
+  // Work preferences
+  work_main: string[] | null
+  wants_temporary: string | null
+  skills: string | null
+  other_comp: string | null
+
+  // Certifications - stored as JSONB in sertifikater column
+  sertifikater: unknown | null  // JSONB
+  stcw_has: string | null
+  stcw_mod: string[] | null
+  stcw_confirm: boolean | null
+  stcw_confirmed: boolean | null
+  deck_has: string | null
+  deck_class: string | null
+
+  // Availability - actual DB columns
+  employment_status: string | null  // 'available', 'on_assignment', 'unavailable'
+  available_from: string | null
+  available_until: string | null
+  available_to: string | null
+
+  // Compliance/Verification - actual DB columns
+  verification_status: string | null  // 'pending_bankid', 'pending_documents', 'verified', 'rejected'
+  compliance_state: string | null  // 'pending', etc.
+  bankid_verified_at: string | null
+  verified_by: string | null
+  verified_at: string | null
+
+  // Pipeline/Status - actual DB columns
+  status: string | null  // 'pending', 'godkjent', 'avslått'
+  pipeline_stage: string | null  // 'ny', 'vurdert', etc.
+
+  // Files
+  cv_key: string | null
+  certs_key: string | null
+
+  // Additional fields
   avatar_url: string | null
-  
-  // Profesjonell info
-  primary_role: string
-  secondary_roles: string[] | null
-  experience_years: number | null
-  experience_details: unknown | null  // JSONB
-  languages: unknown | null  // JSONB
-  
-  // Turnus
-  rotation_preferred: string[] | null
-  rotation_max_weeks_on: number | null
-  rotation_min_weeks_off: number | null
-  rotation_flexible: boolean | null
-  
-  // Lønn
-  salary_min_monthly_nok: number | null
-  salary_preferred_monthly_nok: number | null
-  salary_negotiable: boolean | null
-  
-  // Preferanser
-  location_preferred_regions: string[] | null
-  location_willing_to_relocate: boolean | null
   sectors: string[] | null
-  
-  // Tilgjengelighet (enum: available, available_soon, on_assignment, unavailable, inactive)
-  availability_status: import('./database.types').AvailabilityStatus | null
-  availability_date: string | null
-  availability_notes: string | null
-  availability_updated_at: string | null
-  
-  // Compliance (enum: not_started, documents_pending, review_pending, approved, expired, rejected)
-  compliance_status: import('./database.types').ComplianceStatus | null
-  compliance_checked_at: string | null
-  compliance_checked_by: string | null
-  compliance_notes: string | null
-  compliance_expires_at: string | null
-  
-  // Profil-kvalitet
-  profile_completeness: number | null
-  cv_summary: string | null
-  cv_file_path: string | null
-  
-  // Intern vurdering
-  internal_rating: number | null
+  departments: string[] | null
+  positions: string[] | null
+  vessel_types: string[] | null
   internal_notes: string | null
+  internal_rating: number | null
   tags: string[] | null
-  
-  // Kilde
-  source: string | null
-  source_details: unknown | null  // JSONB
-  referred_by: string | null
-  
-  // Audit
-  created_at: string
-  created_by: string | null
-  updated_at: string | null
-  updated_by: string | null
+  cv_summary: string | null
+
+  // Rate/Compensation
+  expected_daily_rate: number | null
+  currency: string | null
+  preferred_contract_length_months: number | null
+
+  // Meta
+  is_active: boolean | null
+  is_encrypted: boolean | null
+  gdpr_consent: boolean | null
+  source_table: string | null
+  source_ip: string | null
+  submitted_at: string | null
   archived_at: string | null
-  archived_by: string | null
-  archived_reason: string | null
+  flagged_reason: string | null
+  ocr_confidence_score: number | null
+  clerk_user_id: string | null
 }
 
 // ═══════════════════════════════════════════════════════
@@ -119,9 +128,9 @@ export interface CandidateWithRelations {
   primary_role: string
   secondary_roles: string[]
   experience_years: number
-  availability_status: import('./database.types').AvailabilityStatus
+  availability_status: string  // 'available', 'on_assignment', 'unavailable'
   availability_date: string | null
-  compliance_status: import('./database.types').ComplianceStatus
+  compliance_status: string  // 'pending_bankid', 'pending_documents', 'verified', 'rejected'
   internal_rating: number | null
   tags: string[]
   fylke: string | null
@@ -129,6 +138,10 @@ export interface CandidateWithRelations {
   sectors: string[]
   internal_notes: string | null
   cv_summary: string | null
+  // Pipeline/Status fields from actual DB
+  status?: string | null  // 'pending', 'godkjent', 'avslått'
+  pipeline_stage?: string | null  // 'ny', 'vurdert', etc.
+  cv_key?: string | null
   // Optional relations (may not be loaded)
   certifications?: import('./database.types').CandidateCertification[]
   documents?: import('./database.types').CandidateDocument[]
@@ -144,8 +157,9 @@ export interface CandidateFilters {
     required?: string[]
     any_of?: string[]
   }
-  availability?: import('./database.types').AvailabilityStatus[]
-  compliance?: import('./database.types').ComplianceStatus[]
+  availability?: string[]  // 'available', 'on_assignment', 'unavailable'
+  compliance?: string[]  // 'pending_bankid', 'pending_documents', 'verified', 'rejected'
+  status?: string[]  // 'pending', 'godkjent', 'avslått', 'ny' (pipeline_stage)
   experience?: {
     min?: number
     max?: number

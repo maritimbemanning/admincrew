@@ -102,47 +102,45 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
 
   async function onSubmit(data: CandidateFormData) {
     try {
-      // Transform form data to database format
-      const dbData: TablesInsert<'candidates'> = {
+      // Transform form data to database format - use ACTUAL database columns
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dbData: any = {
+        // Name - combine first/last into 'name' column
+        name: `${data.first_name} ${data.last_name}`.trim(),
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         phone: data.phone,
-        phone_secondary: data.phone_secondary,
+        mobile: data.mobile,
         date_of_birth: data.date_of_birth,
         nationality: data.nationality,
-        national_id_number: data.national_id_number,
-        address_street: data.address_street,
-        address_postal_code: data.address_postal_code,
-        address_city: data.address_city,
-        address_country: data.address_country,
+        // Location - use actual DB columns
         fylke: data.fylke,
         kommune: data.kommune,
-        primary_role: data.primary_role,
-        secondary_roles: data.secondary_roles,
-        experience_years: data.experience_years,
-        // Languages is stored as JSONB in the database
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        languages: data.languages as any,
+        city: data.city,
+        country: data.country,
+        // Professional - use actual DB columns
+        primary_rank: data.primary_role,  // DB uses primary_rank
+        rolle: data.primary_role,  // Also store in rolle for compatibility
+        secondary_ranks: data.secondary_roles,  // DB uses secondary_ranks
+        years_of_experience: data.experience_years,  // DB uses years_of_experience
         sectors: data.sectors,
-        cv_summary: data.cv_summary,
-        availability_status: data.availability_status,
-        availability_date: data.availability_date,
-        availability_notes: data.availability_notes,
-        rotation_preferred: data.rotation_preferred,
-        rotation_max_weeks_on: data.rotation_max_weeks_on,
-        rotation_min_weeks_off: data.rotation_min_weeks_off,
-        rotation_flexible: data.rotation_flexible,
-        salary_min_monthly_nok: data.salary_min_monthly_nok,
-        salary_preferred_monthly_nok: data.salary_preferred_monthly_nok,
-        salary_negotiable: data.salary_negotiable,
-        location_preferred_regions: data.location_preferred_regions,
-        location_willing_to_relocate: data.location_willing_to_relocate,
+        // Availability - use actual DB columns
+        employment_status: data.availability_status,  // DB uses employment_status
+        available_from: data.availability_date,  // DB uses available_from
+        available_until: data.available_until,
+        // Rate - use actual DB columns
+        expected_daily_rate: data.expected_daily_rate,
+        currency: data.currency,
+        preferred_contract_length_months: data.preferred_contract_length_months,
+        // Internal
         internal_rating: data.internal_rating,
         internal_notes: data.internal_notes,
         tags: data.tags,
-        compliance_status: data.compliance_status,
-        compliance_notes: data.compliance_notes,
+        // Compliance - use actual DB columns
+        verification_status: data.compliance_status,  // DB uses verification_status
+        compliance_state: data.compliance_status,  // Also store in compliance_state
+        flagged_reason: data.flagged_reason,
       }
 
       if (mode === 'create') {
@@ -203,7 +201,7 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
             <TabsTrigger value="personal">Personalia</TabsTrigger>
             <TabsTrigger value="professional">Profesjonell</TabsTrigger>
             <TabsTrigger value="availability">Tilgjengelighet</TabsTrigger>
-            <TabsTrigger value="preferences">Preferanser</TabsTrigger>
+            <TabsTrigger value="preferences">Kompensasjon</TabsTrigger>
             <TabsTrigger value="internal">Intern</TabsTrigger>
           </TabsList>
 
@@ -274,10 +272,10 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
                   />
                   <FormField
                     control={form.control}
-                    name="phone_secondary"
+                    name="mobile"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefon 2</FormLabel>
+                        <FormLabel>Mobil</FormLabel>
                         <FormControl>
                           <Input placeholder="+47 900 00 001" {...field} value={field.value || ''} />
                         </FormControl>
@@ -287,7 +285,7 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="date_of_birth"
@@ -314,59 +312,20 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="national_id_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Personnummer</FormLabel>
-                        <FormControl>
-                          <Input placeholder="01019012345" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Adresse</CardTitle>
-                <CardDescription>Bostedsadresse</CardDescription>
+                <CardTitle>Lokasjon</CardTitle>
+                <CardDescription>Bosted og geografisk plassering</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="address_street"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gateadresse</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Storgata 1" {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="address_postal_code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Postnummer</FormLabel>
-                        <FormControl>
-                          <Input placeholder="0001" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="address_city"
+                    name="city"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>By</FormLabel>
@@ -379,12 +338,12 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
                   />
                   <FormField
                     control={form.control}
-                    name="address_country"
+                    name="country"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Land</FormLabel>
                         <FormControl>
-                          <Input placeholder="NO" {...field} />
+                          <Input placeholder="NO" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -638,17 +597,16 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
 
                 <FormField
                   control={form.control}
-                  name="availability_notes"
+                  name="available_until"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notater om tilgjengelighet</FormLabel>
+                      <FormLabel>Tilgjengelig til</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Eventuelle notater om tilgjengelighet..."
-                          {...field}
-                          value={field.value || ''}
-                        />
+                        <Input type="date" {...field} value={field.value || ''} />
                       </FormControl>
+                      <FormDescription>
+                        Sluttdato for tilgjengelighetsperioden
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -661,22 +619,22 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
           <TabsContent value="preferences" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Turnusønsker</CardTitle>
-                <CardDescription>Preferanser for rotasjon og turnus</CardDescription>
+                <CardTitle>Kompensasjon</CardTitle>
+                <CardDescription>Forventet dagrate og kontraktlengde</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="rotation_max_weeks_on"
+                    name="expected_daily_rate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Maks uker på</FormLabel>
+                        <FormLabel>Forventet dagrate</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            min="1"
-                            max="12"
+                            min="0"
+                            placeholder="2500"
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
@@ -688,20 +646,22 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
                   />
                   <FormField
                     control={form.control}
-                    name="rotation_min_weeks_off"
+                    name="currency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Min uker fri</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="12"
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                          />
-                        </FormControl>
+                        <FormLabel>Valuta</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'NOK'}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg valuta" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="NOK">NOK</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -710,149 +670,25 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
 
                 <FormField
                   control={form.control}
-                  name="rotation_flexible"
+                  name="preferred_contract_length_months"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Fleksibel turnus</FormLabel>
-                        <FormDescription>
-                          Kandidaten er fleksibel med turnusordninger
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Lønn</CardTitle>
-                <CardDescription>Lønnsforventninger</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="salary_min_monthly_nok"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Minimum månedslønn (NOK)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="salary_preferred_monthly_nok"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ønsket månedslønn (NOK)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="salary_negotiable"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Forhandlingsbar lønn</FormLabel>
-                        <FormDescription>
-                          Kandidaten er åpen for lønnsforhandling
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Lokasjon</CardTitle>
-                <CardDescription>Geografiske preferanser</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="location_preferred_regions"
-                  render={() => (
                     <FormItem>
-                      <FormLabel>Foretrukne regioner</FormLabel>
-                      <div className="grid grid-cols-3 gap-2">
-                        {NORWEGIAN_FYLKER.map((fylke) => (
-                          <FormField
-                            key={fylke}
-                            control={form.control}
-                            name="location_preferred_regions"
-                            render={({ field }) => (
-                              <FormItem className="flex items-center space-x-2 space-y-0">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(fylke)}
-                                    onCheckedChange={(checked) => {
-                                      const current = field.value || []
-                                      if (checked) {
-                                        field.onChange([...current, fylke])
-                                      } else {
-                                        field.onChange(current.filter((r) => r !== fylke))
-                                      }
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-sm font-normal">{fylke}</FormLabel>
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="location_willing_to_relocate"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Villig til å flytte</FormLabel>
-                        <FormDescription>
-                          Kandidaten er villig til å flytte for riktig jobb
-                        </FormDescription>
-                      </div>
+                      <FormLabel>Foretrukket kontraktlengde (måneder)</FormLabel>
                       <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        <Input
+                          type="number"
+                          min="1"
+                          max="24"
+                          placeholder="6"
+                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                        />
                       </FormControl>
+                      <FormDescription>
+                        Foretrukket lengde på kontrakt i måneder
+                      </FormDescription>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -950,13 +786,13 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
 
                 <FormField
                   control={form.control}
-                  name="compliance_notes"
+                  name="flagged_reason"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Compliance-notater</FormLabel>
+                      <FormLabel>Merknad/årsak</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Notater om compliance-sjekk..."
+                          placeholder="Eventuell merknad eller årsak til flagging..."
                           {...field}
                           value={field.value || ''}
                         />

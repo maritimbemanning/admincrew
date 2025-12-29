@@ -19,6 +19,7 @@ export * from './use-crm-activities'
 export * from './use-crm-tasks'
 export * from './use-organizations'
 export * from './use-contacts'
+export * from './use-deals'
 
 // Operations
 export * from './use-requests'
@@ -33,9 +34,13 @@ export * from './use-contracts'
 export * from './use-timesheets'
 
 // Portal Inbox (bluecrew.no data)
-export * from './use-job-applications'
-export * from './use-interest-leads'
-export * from './use-staffing-needs'
+// NOTE: use-inbox.ts is the main inbox hook file used by app/(dashboard)/inbox/page.tsx
+// The individual hooks below have duplicate function names - use with caution
+export * from './use-inbox'
+// These exports may conflict with use-inbox.ts exports:
+// export * from './use-job-applications'  // Has duplicate useJobApplications
+// export * from './use-interest-leads'    // Has duplicate useInterestLeads
+// export * from './use-staffing-needs'    // Has duplicate useStaffingNeeds
 export * from './use-portal-contacts'
 
 // QMS

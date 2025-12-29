@@ -1,9 +1,12 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState, useRef } from 'react'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
-import { useCandidate, useUpdateCandidateRating, useUpdateCandidateTags } from '@/hooks'
+import { notFound, useRouter } from 'next/navigation'
+import { useCandidate, useUpdateCandidateRating, useUpdateCandidateTags, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
+import { useUploadCandidateCv, calculateProfileCompleteness, useArchiveCandidate } from '@/hooks/use-candidate'
+import { getCvSignedUrl } from '@/hooks/use-inbox'
+import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +41,8 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
+  Upload,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AvailabilityStatus, ComplianceStatus } from '@/types'
@@ -66,7 +72,107 @@ const complianceConfig: Record<ComplianceStatus, { label: string; icon: typeof C
 
 export default function CandidateProfilePage({ params }: PageProps) {
   const { id } = use(params)
+  const router = useRouter()
   const { data: candidate, isLoading, error } = useCandidate(id)
+  const [isDownloadingCv, setIsDownloadingCv] = useState(false)
+  const uploadCv = useUploadCandidateCv()
+  const archiveCandidate = useArchiveCandidate()
+  const addToPool = useAddCandidateToPool()
+  const removeFromPool = useRemoveCandidateFromPool()
+  const { data: pools } = usePools()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleArchive = async () => {
+    if (!candidate) return
+    if (!confirm(`Er du sikker på at du vil arkivere ${candidate.first_name}?`)) return
+    
+    try {
+      await archiveCandidate.mutateAsync(candidate.id)
+      toast.success('Kandidat arkivert')
+      router.push('/candidates')
+    } catch {
+      toast.error('Kunne ikke arkivere kandidat')
+    }
+  }
+
+  const handleAddToFavorites = async () => {
+    if (!candidate) return
+    const favPool = pools?.find(p => p.slug === 'favoritter')
+    if (!favPool) {
+      toast.error('Favoritter-pool ikke funnet')
+      return
+    }
+    try {
+      await addToPool.mutateAsync({ candidateId: candidate.id, poolId: favPool.id })
+      toast.success('Lagt til i favoritter')
+    } catch {
+      toast.error('Kunne ikke legge til i favoritter')
+    }
+  }
+
+  const handleRemoveFromPool = async (poolId: string, poolName: string) => {
+    if (!candidate) return
+    try {
+      await removeFromPool.mutateAsync({ candidateId: candidate.id, poolId })
+      toast.success(`Fjernet fra ${poolName}`)
+    } catch {
+      toast.error('Kunne ikke fjerne fra pool')
+    }
+  }
+
+  const handleDownloadCv = async () => {
+    if (!candidate?._raw?.cv_key && !candidate?.cv_key) {
+      toast.error('Ingen CV tilgjengelig')
+      return
+    }
+
+    setIsDownloadingCv(true)
+    try {
+      const cvKey = candidate._raw?.cv_key || candidate.cv_key
+      const url = await getCvSignedUrl(cvKey!)
+      if (url) {
+        window.open(url, '_blank')
+      } else {
+        toast.error('Kunne ikke hente CV')
+      }
+    } catch (err) {
+      toast.error('Feil ved nedlasting av CV')
+      console.error(err)
+    } finally {
+      setIsDownloadingCv(false)
+    }
+  }
+
+  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !candidate) return
+
+    // Valider filtype
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Kun PDF og Word-dokumenter er tillatt')
+      return
+    }
+
+    // Valider filstørrelse (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Filen er for stor (maks 10MB)')
+      return
+    }
+
+    try {
+      await uploadCv.mutateAsync({ candidateId: candidate.id, file })
+      toast.success('CV lastet opp!')
+    } catch (err) {
+      toast.error('Kunne ikke laste opp CV')
+      console.error(err)
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   if (isLoading) {
     return <CandidateProfileSkeleton />
@@ -76,11 +182,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
     notFound()
   }
 
-  const availability = availabilityConfig[candidate.availability_status] || availabilityConfig.available
-  const compliance = complianceConfig[candidate.compliance_status] || complianceConfig.not_started
+  const availability = availabilityConfig[candidate.availability_status as keyof typeof availabilityConfig] || availabilityConfig.available
+  const compliance = complianceConfig[candidate.compliance_status as keyof typeof complianceConfig] || complianceConfig.not_started
   const ComplianceIcon = compliance.icon
   // Access raw DB fields for additional data
   const raw = candidate._raw
+  const hasCv = !!raw?.cv_key || !!candidate.cv_key
+  // Profile completeness
+  const { score: profileScore, missing: missingFields } = calculateProfileCompleteness(candidate)
   // Handle potentially empty names
   const firstInitial = candidate.first_name?.[0] || ''
   const lastInitial = candidate.last_name?.[0] || ''
@@ -117,18 +226,29 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Download className="h-4 w-4 mr-2" />
-                    Last ned CV
+                  <DropdownMenuItem 
+                    onClick={handleDownloadCv}
+                    disabled={!hasCv || isDownloadingCv}
+                  >
+                    {isDownloadingCv ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {hasCv ? 'Last ned CV' : 'Ingen CV'}
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleAddToFavorites}>
                     <Star className="h-4 w-4 mr-2" />
                     Legg til i favoritter
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem 
+                    onClick={handleArchive}
+                    className="text-destructive"
+                    disabled={archiveCandidate.isPending}
+                  >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Arkiver kandidat
+                    {archiveCandidate.isPending ? 'Arkiverer...' : 'Arkiver kandidat'}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -400,6 +520,37 @@ export default function CandidateProfilePage({ params }: PageProps) {
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
+            {/* Profile Completeness */}
+            <Card className={profileScore < 50 ? 'border-yellow-500/50' : ''}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  Profil-score
+                  <span className={cn(
+                    'text-2xl font-bold',
+                    profileScore >= 70 ? 'text-green-500' :
+                    profileScore >= 40 ? 'text-yellow-500' : 'text-red-500'
+                  )}>
+                    {profileScore}%
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Progress value={profileScore} className="h-2 mb-3" />
+                {missingFields.length > 0 && (
+                  <div className="text-sm">
+                    <div className="text-muted-foreground mb-1">Mangler:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {missingFields.map(field => (
+                        <Badge key={field} variant="outline" className="text-xs">
+                          {field}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Quick Actions */}
             <Card>
               <CardHeader>
@@ -414,10 +565,73 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   <Mail className="h-4 w-4 mr-2" />
                   Send e-post
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Se CV
-                </Button>
+                
+                {/* CV Section */}
+                {hasCv ? (
+                  <Button 
+                    className="w-full justify-start" 
+                    variant="outline"
+                    onClick={handleDownloadCv}
+                    disabled={isDownloadingCv}
+                  >
+                    {isDownloadingCv ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    Se CV
+                  </Button>
+                ) : (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleCvUpload}
+                      className="hidden"
+                    />
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadCv.isPending}
+                    >
+                      {uploadCv.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Last opp CV
+                    </Button>
+                  </>
+                )}
+                
+                {/* Replace CV option when CV exists */}
+                {hasCv && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleCvUpload}
+                      className="hidden"
+                    />
+                    <Button 
+                      className="w-full justify-start text-muted-foreground" 
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadCv.isPending}
+                    >
+                      {uploadCv.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Erstatt CV
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -431,14 +645,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   <ComplianceIcon className="h-5 w-5" />
                   <span className="font-medium">{compliance.label}</span>
                 </div>
-                {raw?.compliance_checked_at && (
+                {raw?.verified_at && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    Sist sjekket: {format(new Date(raw.compliance_checked_at), 'dd.MM.yyyy')}
+                    Sist sjekket: {format(new Date(raw.verified_at), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {raw?.compliance_notes && (
+                {raw?.flagged_reason && (
                   <div className="text-sm text-muted-foreground">
-                    Merknad: {raw.compliance_notes}
+                    Merknad: {raw.flagged_reason}
                   </div>
                 )}
               </CardContent>
@@ -458,9 +672,9 @@ export default function CandidateProfilePage({ params }: PageProps) {
                     Fra: {format(new Date(candidate.availability_date), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {raw?.availability_notes && (
+                {raw?.available_until && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    {raw.availability_notes}
+                    Tilgjengelig til: {format(new Date(raw.available_until), 'dd.MM.yyyy')}
                   </div>
                 )}
               </CardContent>
@@ -485,29 +699,41 @@ export default function CandidateProfilePage({ params }: PageProps) {
             </Card>
 
             {/* Pools */}
-            {candidate.pools && candidate.pools.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Pools</CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Pools</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {candidate.pools && candidate.pools.length > 0 ? (
                   <div className="space-y-2">
                     {candidate.pools.map((pool) => (
                       <div
                         key={pool.id}
-                        className="flex items-center gap-2 p-2 rounded-lg border"
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg border group"
                       >
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: pool.color }}
-                        />
-                        <span className="text-sm">{pool.name}</span>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{ backgroundColor: pool.color }}
+                          />
+                          <span className="text-sm">{pool.name}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                          onClick={() => handleRemoveFromPool(pool.id, pool.name)}
+                        >
+                          <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </Button>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <div className="text-sm text-muted-foreground">Ikke i noen pools</div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Internal Notes */}
             <Card>
@@ -543,10 +769,10 @@ export default function CandidateProfilePage({ params }: PageProps) {
                     <span>{format(new Date(raw.updated_at), 'dd.MM.yyyy')}</span>
                   </div>
                 )}
-                {raw?.source && (
+                {raw?.source_table && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Kilde</span>
-                    <span>{raw.source}</span>
+                    <span>{raw.source_table}</span>
                   </div>
                 )}
               </CardContent>

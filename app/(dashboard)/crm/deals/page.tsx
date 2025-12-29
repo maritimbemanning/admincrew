@@ -2,222 +2,308 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, TrendingUp, Search, Filter, DollarSign } from 'lucide-react'
+import { Plus, DollarSign, TrendingUp, MoreHorizontal, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useDebounce } from '@/hooks/use-debounce'
-import { LoadingSkeleton } from '@/components/shared/loading-skeleton'
-import { EmptyState } from '@/components/shared/empty-state'
-
-// Mock data - will be replaced with real hook
-const mockDeals = [
-  {
-    id: '1',
-    title: 'Rammekontrakt 2025',
-    organization_name: 'Frøy AS',
-    value_nok: 2500000,
-    stage: 'negotiation',
-    probability: 75,
-    expected_close_date: '2025-01-15',
-    owner_name: 'Isak Dalen',
-  },
-  {
-    id: '2',
-    title: 'Bemanningsavtale Q1',
-    organization_name: 'Nordlaks AS',
-    value_nok: 800000,
-    stage: 'proposal',
-    probability: 50,
-    expected_close_date: '2025-02-01',
-    owner_name: 'Isak Dalen',
-  },
-  {
-    id: '3',
-    title: 'Offshore prosjekt',
-    organization_name: 'Offshore Services AS',
-    value_nok: 1500000,
-    stage: 'qualification',
-    probability: 20,
-    expected_close_date: '2025-03-15',
-    owner_name: 'Tor Faafeng',
-  },
-]
-
-const stageColors: Record<string, string> = {
-  qualification: 'bg-gray-100 text-gray-800',
-  needs_analysis: 'bg-blue-100 text-blue-800',
-  proposal: 'bg-yellow-100 text-yellow-800',
-  negotiation: 'bg-orange-100 text-orange-800',
-  closed_won: 'bg-green-100 text-green-800',
-  closed_lost: 'bg-red-100 text-red-800',
-}
-
-const stageLabels: Record<string, string> = {
-  qualification: 'Kvalifisering',
-  needs_analysis: 'Behovsanalyse',
-  proposal: 'Tilbud sendt',
-  negotiation: 'Forhandling',
-  closed_won: 'Vunnet',
-  closed_lost: 'Tapt',
-}
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
+import { 
+  useDealsPipeline, 
+  useUpdateDealStage,
+  dealStages,
+  type Deal,
+  type DealStage
+} from '@/hooks/use-deals'
+import { toast } from 'sonner'
 
 export default function DealsPage() {
   const router = useRouter()
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 300)
-  const [isLoading] = useState(false)
-
-  const filteredDeals = mockDeals.filter((deal) =>
-    deal.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    deal.organization_name.toLowerCase().includes(debouncedSearch.toLowerCase())
-  )
+  const { data, isLoading, error } = useDealsPipeline()
+  const updateStage = useUpdateDealStage()
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('nb-NO', {
-      style: 'currency',
-      currency: 'NOK',
-      maximumFractionDigits: 0,
-    }).format(amount)
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M`
+    }
+    if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K`
+    }
+    return amount.toString()
   }
 
-  const totalValue = mockDeals.reduce((sum, deal) => sum + deal.value_nok, 0)
-  const weightedValue = mockDeals.reduce(
-    (sum, deal) => sum + (deal.value_nok * deal.probability) / 100,
-    0
-  )
+  const handleMoveToStage = async (deal: Deal, newStage: DealStage) => {
+    try {
+      await updateStage.mutateAsync({ id: deal.id, stage: newStage })
+      toast.success(`"${deal.title}" flyttet til "${dealStages.find(s => s.value === newStage)?.label}"`)
+    } catch (error) {
+      toast.error('Kunne ikke flytte deal')
+      console.error(error)
+    }
+  }
+
+  if (isLoading) {
+    return <DealsPipelineSkeleton />
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
+        <p className="text-destructive">Kunne ikke laste deals</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Prøv igjen
+        </Button>
+      </div>
+    )
+  }
+
+  if (!data) return null
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6 h-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Deals</h1>
-          <p className="text-muted-foreground">
-            Salgsmuligheter og pipeline
+          <h1 className="text-2xl font-bold">Deals Pipeline</h1>
+          <p className="text-muted-foreground flex items-center gap-4">
+            <span>{data.stats.totalDeals} aktive deals</span>
+            <span className="flex items-center gap-1">
+              <TrendingUp className="h-4 w-4" />
+              Vektet verdi: {formatCurrency(data.stats.weightedValue)} NOK
+            </span>
+            <span className="text-green-600 font-medium">
+              ✓ Vunnet: {formatCurrency(data.stats.wonValue)} NOK
+            </span>
           </p>
         </div>
-        <Button>
+        <Button onClick={() => router.push('/crm/deals/new')}>
           <Plus className="mr-2 h-4 w-4" />
           Ny deal
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Pipeline Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total pipeline</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-            <p className="text-xs text-muted-foreground">
-              {mockDeals.length} deals
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Vektet verdi</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(weightedValue)}</div>
-            <p className="text-xs text-muted-foreground">
-              basert på sannsynlighet
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Gj.snitt dealstørrelse</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(totalValue / mockDeals.length)}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-2xl font-bold">{formatCurrency(data.stats.totalValue)}</p>
+                <p className="text-sm text-muted-foreground">Total pipeline</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              per deal
-            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-2xl font-bold">{formatCurrency(data.stats.weightedValue)}</p>
+                <p className="text-sm text-muted-foreground">Vektet verdi</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              <div>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(data.stats.wonValue)}</p>
+                <p className="text-sm text-muted-foreground">Vunnet ({data.stats.wonDeals} deals)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-2xl font-bold">{data.stats.totalDeals}</p>
+                <p className="text-sm text-muted-foreground">Aktive deals</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Søk deals..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Button variant="outline" size="icon">
-          <Filter className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" onClick={() => router.push('/crm/pipeline')}>
-          Kanban-visning
-        </Button>
+      {/* Kanban Board */}
+      <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
+        {data.columns.map((column) => (
+          <div
+            key={column.id}
+            className={cn(
+              'flex-shrink-0 w-80 rounded-lg p-3 flex flex-col',
+              column.bgColor
+            )}
+          >
+            {/* Column Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className={cn('font-semibold text-sm', column.color)}>
+                  {column.label}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {column.count} stk • ~{formatCurrency(column.totalValue)} NOK
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Vektet: {formatCurrency(column.weightedValue)} ({column.probability}%)
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6"
+                onClick={() => router.push(`/crm/deals/new?stage=${column.id}`)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Deal Cards */}
+            <div className="space-y-2 flex-1 min-h-[200px] overflow-y-auto">
+              {column.deals.map((deal) => (
+                <Card
+                  key={deal.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow bg-white"
+                  onClick={() => router.push(`/crm/deals/${deal.id}`)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{deal.title}</p>
+                        {deal.organization && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                            <Building2 className="h-3 w-3" />
+                            {deal.organization.name}
+                          </p>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+                            <MoreHorizontal className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/crm/deals/${deal.id}`)
+                          }}>
+                            Se detaljer
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                            Flytt til fase
+                          </div>
+                          {dealStages
+                            .filter(s => s.value !== deal.stage)
+                            .map(stage => (
+                              <DropdownMenuItem 
+                                key={stage.value}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleMoveToStage(deal, stage.value)
+                                }}
+                              >
+                                <span className={cn('w-2 h-2 rounded-full mr-2', stage.bgColor)} />
+                                {stage.label}
+                              </DropdownMenuItem>
+                            ))
+                          }
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm font-semibold text-primary">
+                        {deal.value_nok 
+                          ? `${formatCurrency(deal.value_nok)} NOK`
+                          : '-'
+                        }
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {deal.probability}%
+                      </Badge>
+                    </div>
+
+                    {deal.expected_close_date && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Forventet: {new Date(deal.expected_close_date).toLocaleDateString('nb-NO')}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+              {column.deals.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Ingen deals
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Deals List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <LoadingSkeleton key={i} className="h-24" />
-          ))}
+      {/* Footer */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground border-t pt-4">
+        <span>
+          Pipeline: ~{formatCurrency(data.stats.totalValue)} NOK ({data.stats.totalDeals} deals)
+        </span>
+        <span className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          Bruk menyen på kortene for å flytte mellom faser
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function DealsPipelineSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 p-6 h-full">
+      <div className="flex items-center justify-between">
+        <div>
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
         </div>
-      ) : filteredDeals.length === 0 ? (
-        <EmptyState
-          icon={<TrendingUp className="h-12 w-12" />}
-          title="Ingen deals funnet"
-          description="Prøv et annet søk eller opprett en ny deal."
-          action={{
-            label: 'Ny deal',
-            onClick: () => {},
-          }}
-        />
-      ) : (
-        <div className="space-y-4">
-          {filteredDeals.map((deal) => (
-            <Card
-              key={deal.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-medium">{deal.title}</h3>
-                    <Badge className={stageColors[deal.stage]}>
-                      {stageLabels[deal.stage]}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {deal.organization_name} • Eier: {deal.owner_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Forventet lukking: {deal.expected_close_date}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold">{formatCurrency(deal.value_nok)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {deal.probability}% sannsynlighet
-                  </p>
-                  <p className="text-sm font-medium text-primary">
-                    Vektet: {formatCurrency((deal.value_nok * deal.probability) / 100)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="pt-6">
+              <Skeleton className="h-8 w-24 mb-1" />
+              <Skeleton className="h-4 w-20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex-shrink-0 w-80 rounded-lg bg-muted/50 p-3">
+            <Skeleton className="h-5 w-24 mb-1" />
+            <Skeleton className="h-4 w-32 mb-3" />
+            <div className="space-y-2">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

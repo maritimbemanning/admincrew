@@ -1,19 +1,33 @@
 'use client'
 
 import { useState } from 'react'
-import { useCandidates } from '@/hooks'
+import { useCandidates, usePools, useAddCandidateToPool } from '@/hooks'
+import { useBulkArchiveCandidates, useBulkDeleteCandidates } from '@/hooks/use-candidate'
 import { CandidateCard } from './candidate-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Users, FolderPlus } from 'lucide-react'
+import { AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Users, FolderPlus, Loader2, Archive, Trash2 } from 'lucide-react'
 import type { CandidateFilters, CandidateSort } from '@/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
 
 interface CandidateListProps {
   filters?: CandidateFilters
@@ -33,6 +47,7 @@ export function CandidateList({
   onPageChange,
 }: CandidateListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isAddingToPool, setIsAddingToPool] = useState(false)
   
   const { data, isLoading, error } = useCandidates({
     filters,
@@ -41,6 +56,56 @@ export function CandidateList({
     page,
     pageSize,
   })
+
+  const { data: pools } = usePools()
+  const addToPool = useAddCandidateToPool()
+  const bulkArchive = useBulkArchiveCandidates()
+  const bulkDelete = useBulkDeleteCandidates()
+
+  const handleArchiveSelected = async () => {
+    if (selectedIds.size === 0) return
+    
+    try {
+      await bulkArchive.mutateAsync(Array.from(selectedIds))
+      toast.success(`${selectedIds.size} kandidat(er) arkivert`)
+      setSelectedIds(new Set())
+    } catch (error) {
+      toast.error('Kunne ikke arkivere kandidater')
+      console.error(error)
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return
+    
+    try {
+      await bulkDelete.mutateAsync(Array.from(selectedIds))
+      toast.success(`${selectedIds.size} kandidat(er) slettet permanent`)
+      setSelectedIds(new Set())
+    } catch (error) {
+      toast.error('Kunne ikke slette kandidater')
+      console.error(error)
+    }
+  }
+
+  const handleAddToPool = async (poolId: string, poolName: string) => {
+    if (selectedIds.size === 0) return
+    
+    setIsAddingToPool(true)
+    try {
+      const promises = Array.from(selectedIds).map(candidateId =>
+        addToPool.mutateAsync({ candidateId, poolId })
+      )
+      await Promise.all(promises)
+      toast.success(`${selectedIds.size} kandidat(er) lagt til i "${poolName}"`)
+      setSelectedIds(new Set())
+    } catch (error) {
+      toast.error('Kunne ikke legge til i pool')
+      console.error(error)
+    } finally {
+      setIsAddingToPool(false)
+    }
+  }
 
   const handleSelectAll = (checked: boolean) => {
     if (checked && data) {
@@ -124,20 +189,99 @@ export function CandidateList({
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <FolderPlus className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" disabled={isAddingToPool}>
+                  {isAddingToPool ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FolderPlus className="h-4 w-4 mr-2" />
+                  )}
                   Legg til i pool
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>Favoritter</DropdownMenuItem>
-                <DropdownMenuItem>Blacklist</DropdownMenuItem>
-                <DropdownMenuItem>Ny pool...</DropdownMenuItem>
+                {/* System pools (favoritter/blacklist) */}
+                {pools?.filter(p => p.is_system && ['favoritter', 'blacklist'].includes(p.slug)).map(pool => (
+                  <DropdownMenuItem 
+                    key={pool.id}
+                    onClick={() => handleAddToPool(pool.id, pool.name)}
+                  >
+                    {pool.name}
+                  </DropdownMenuItem>
+                ))}
+                
+                {/* Custom pools */}
+                {pools?.filter(p => !p.is_system).length ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    {pools.filter(p => !p.is_system).map(pool => (
+                      <DropdownMenuItem 
+                        key={pool.id}
+                        onClick={() => handleAddToPool(pool.id, pool.name)}
+                      >
+                        {pool.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleArchiveSelected}
+              disabled={bulkArchive.isPending}
+            >
+              {bulkArchive.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Archive className="h-4 w-4 mr-2" />
+              )}
+              Arkiver
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={bulkDelete.isPending}
+                >
+                  {bulkDelete.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Slett
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dette vil permanent slette {selectedIds.size} kandidat(er). 
+                    Denne handlingen kan ikke angres.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteSelected}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Ja, slett permanent
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
               <Users className="h-4 w-4 mr-2" />
-              Bulk-handling
+              Avmarker ({selectedIds.size})
             </Button>
           </div>
         )}
@@ -152,6 +296,13 @@ export function CandidateList({
             name: cert.name || cert.code || '',
             expiryDate: cert.expiry_date || ''
           })) || []
+
+        // Pools fra kandidatens _raw data
+        const candidatePools = candidate.pools?.map(p => ({
+          id: p.id,
+          name: p.name,
+          color: p.color || '#888',
+        })) || []
 
         return (
           <CandidateCard
@@ -173,6 +324,8 @@ export function CandidateList({
               tags: candidate.tags,
               fylke: candidate.fylke,
               certifications,
+              cvFilePath: candidate.cv_key || candidate._raw?.cv_key || null,
+              pools: candidatePools,
             }}
             isSelected={selectedIds.has(candidate.id)}
             onSelectChange={(checked) => handleSelectCandidate(candidate.id, checked)}
