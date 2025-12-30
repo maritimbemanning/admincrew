@@ -121,14 +121,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
   }
 
   const handleDownloadCv = async () => {
-    if (!candidate?._raw?.cv_key && !candidate?.cv_key) {
+    if (!candidate?._raw?.cv_file_path && !candidate?.cv_key) {
       toast.error('Ingen CV tilgjengelig')
       return
     }
 
     setIsDownloadingCv(true)
     try {
-      const cvKey = candidate._raw?.cv_key || candidate.cv_key
+      const cvKey = candidate._raw?.cv_file_path || candidate.cv_key
       const url = await getCvSignedUrl(cvKey!)
       if (url) {
         window.open(url, '_blank')
@@ -187,7 +187,7 @@ export default function CandidateProfilePage({ params }: PageProps) {
   const ComplianceIcon = compliance.icon
   // Access raw DB fields for additional data
   const raw = candidate._raw
-  const hasCv = !!raw?.cv_key || !!candidate.cv_key
+  const hasCv = !!raw?.cv_file_path || !!candidate.cv_key
   // Profile completeness
   const { score: profileScore, missing: missingFields } = calculateProfileCompleteness(candidate)
   // Handle potentially empty names
