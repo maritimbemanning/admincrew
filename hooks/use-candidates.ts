@@ -45,37 +45,31 @@ export const candidateKeys = {
  * Transform raw database row to normalized CandidateWithRelations
  * Maps actual DB columns to expected interface
  *
- * Actual DB columns:
- * - name (not first_name/last_name combo)
- * - primary_rank or rolle (not primary_role)
- * - years_of_experience or erfaring (not experience_years)
- * - employment_status (not availability_status)
- * - verification_status (not compliance_status)
- * - available_from/available_until (not availability_date)
+ * Actual DB columns (from migration 00003_candidates.sql):
+ * - first_name, last_name (separate fields)
+ * - primary_role
+ * - experience_years
+ * - availability_status
+ * - compliance_status
+ * - availability_date
  */
 function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
-  // Parse name - DB has 'name' column
-  const fullName = row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'Ukjent'
-  const nameParts = fullName.split(' ')
-  const firstName = nameParts[0] || ''
-  const lastName = nameParts.slice(1).join(' ') || ''
+  // DB has separate first_name and last_name columns
+  const firstName = row.first_name || ''
+  const lastName = row.last_name || ''
+  const fullName = `${firstName} ${lastName}`.trim() || 'Ukjent'
 
-  // Map rolle/primary_rank to primary_role
-  const primaryRole = row.primary_rank || row.rolle || 'Ikke spesifisert'
+  // primary_role is the correct column name
+  const primaryRole = row.primary_role || 'Ikke spesifisert'
 
-  // Map years_of_experience or parse erfaring
-  let experienceYears = row.years_of_experience || 0
-  if (!experienceYears && row.erfaring) {
-    // erfaring might be text like "5 år" - try to parse
-    const match = row.erfaring.match(/(\d+)/)
-    if (match) experienceYears = parseInt(match[1], 10)
-  }
+  // experience_years is the correct column name
+  const experienceYears = row.experience_years || 0
 
-  // Map employment_status to availability_status
-  const availabilityStatus = row.employment_status || 'available'
+  // availability_status is the correct column name
+  const availabilityStatus = row.availability_status || 'available'
 
-  // Map verification_status to compliance_status
-  const complianceStatus = row.verification_status || row.compliance_state || 'pending_bankid'
+  // compliance_status is the correct column name
+  const complianceStatus = row.compliance_status || 'not_started'
 
   return {
     id: row.id,
@@ -83,25 +77,21 @@ function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
     last_name: lastName,
     full_name: fullName,
     email: row.email,
-    phone: row.phone || row.mobile || null,
+    phone: row.phone || null,
     avatar_url: row.avatar_url || null,
     primary_role: primaryRole,
-    secondary_roles: row.secondary_ranks || [],
+    secondary_roles: row.secondary_roles || [],
     experience_years: experienceYears,
     availability_status: availabilityStatus as CandidateWithRelations['availability_status'],
-    availability_date: row.available_from || null,
+    availability_date: row.availability_date || null,
     compliance_status: complianceStatus as CandidateWithRelations['compliance_status'],
     internal_rating: row.internal_rating || null,
     tags: row.tags || [],
-    fylke: row.fylke || row.county || null,
-    kommune: row.kommune || row.municipality || null,
+    fylke: row.fylke || null,
+    kommune: row.kommune || null,
     sectors: row.sectors || [],
     internal_notes: row.internal_notes || null,
     cv_summary: row.cv_summary || null,
-    // Additional fields from actual DB
-    status: row.status,
-    pipeline_stage: row.pipeline_stage,
-    cv_key: row.cv_key,
     // Store raw for access to all fields
     _raw: row,
   }
@@ -136,15 +126,15 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     }
   }
 
-  // Text search - use actual DB columns: name, email, primary_rank, rolle
+  // Text search - use actual DB columns: first_name, last_name, email, primary_role
   if (filters?.search) {
     const searchTerm = `%${filters.search}%`
-    query = query.or(`name.ilike.${searchTerm},email.ilike.${searchTerm},primary_rank.ilike.${searchTerm},rolle.ilike.${searchTerm}`)
+    query = query.or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},primary_role.ilike.${searchTerm}`)
   }
 
-  // Role filter - search in primary_rank (actual DB column)
+  // Role filter - search in primary_role (actual DB column)
   if (filters?.roles && filters.roles.length > 0) {
-    query = query.in('primary_rank', filters.roles)
+    query = query.in('primary_role', filters.roles)
   }
 
   // Status filter - use status or pipeline_stage column
@@ -163,22 +153,22 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     }
   }
 
-  // Availability filter - use employment_status column (actual DB column)
+  // Availability filter - use availability_status column (actual DB column)
   if (filters?.availability && filters.availability.length > 0) {
-    query = query.in('employment_status', filters.availability)
+    query = query.in('availability_status', filters.availability)
   }
 
-  // Compliance filter - use verification_status column (actual DB column)
+  // Compliance filter - use compliance_status column (actual DB column)
   if (filters?.compliance && filters.compliance.length > 0) {
-    query = query.in('verification_status', filters.compliance)
+    query = query.in('compliance_status', filters.compliance)
   }
 
-  // Experience filter - use years_of_experience column (actual DB column)
+  // Experience filter - use experience_years column (actual DB column)
   if (filters?.experience?.min !== undefined) {
-    query = query.gte('years_of_experience', filters.experience.min)
+    query = query.gte('experience_years', filters.experience.min)
   }
   if (filters?.experience?.max !== undefined) {
-    query = query.lte('years_of_experience', filters.experience.max)
+    query = query.lte('experience_years', filters.experience.max)
   }
 
   // Location filter - fylke exists in actual DB
@@ -201,11 +191,11 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   const sortDirection = sort?.direction || 'desc'
 
   const sortMapping: Record<string, string> = {
-    name: 'name',
-    role: 'primary_rank',
-    experience: 'years_of_experience',
-    availability: 'employment_status',
-    rating: 'created_at', // fallback - internal_rating doesn't exist
+    name: 'first_name',
+    role: 'primary_role',
+    experience: 'experience_years',
+    availability: 'availability_status',
+    rating: 'internal_rating',
     created_at: 'created_at',
     updated_at: 'updated_at',
   }
