@@ -102,45 +102,38 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
 
   async function onSubmit(data: CandidateFormData) {
     try {
-      // Transform form data to database format - use ACTUAL database columns
+      // Transform form data to database format (migration 00003_candidates.sql)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dbData: any = {
-        // Name - combine first/last into 'name' column
-        name: `${data.first_name} ${data.last_name}`.trim(),
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         phone: data.phone,
-        mobile: data.mobile,
+        phone_secondary: data.phone_secondary,
         date_of_birth: data.date_of_birth,
         nationality: data.nationality,
-        // Location - use actual DB columns
+        // Location
         fylke: data.fylke,
         kommune: data.kommune,
-        city: data.city,
-        country: data.country,
-        // Professional - use actual DB columns
-        primary_rank: data.primary_role,  // DB uses primary_rank
-        rolle: data.primary_role,  // Also store in rolle for compatibility
-        secondary_ranks: data.secondary_roles,  // DB uses secondary_ranks
-        years_of_experience: data.experience_years,  // DB uses years_of_experience
+        address_city: data.address_city,
+        address_country: data.address_country,
+        // Professional
+        primary_role: data.primary_role,
+        secondary_roles: data.secondary_roles,
+        experience_years: data.experience_years,
         sectors: data.sectors,
-        // Availability - use actual DB columns
-        employment_status: data.availability_status,  // DB uses employment_status
-        available_from: data.availability_date,  // DB uses available_from
-        available_until: data.available_until,
-        // Rate - use actual DB columns
-        expected_daily_rate: data.expected_daily_rate,
-        currency: data.currency,
-        preferred_contract_length_months: data.preferred_contract_length_months,
+        cv_summary: data.cv_summary,
+        // Availability
+        availability_status: data.availability_status,
+        availability_date: data.availability_date,
+        availability_notes: data.availability_notes,
         // Internal
         internal_rating: data.internal_rating,
         internal_notes: data.internal_notes,
         tags: data.tags,
-        // Compliance - use actual DB columns
-        verification_status: data.compliance_status,  // DB uses verification_status
-        compliance_state: data.compliance_status,  // Also store in compliance_state
-        flagged_reason: data.flagged_reason,
+        // Compliance
+        compliance_status: data.compliance_status,
+        compliance_notes: data.compliance_notes,
       }
 
       if (mode === 'create') {

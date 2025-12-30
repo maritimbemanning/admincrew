@@ -11,30 +11,12 @@ import { candidateKeys } from './use-candidates'
 
 /**
  * Transform raw database row to normalized CandidateWithRelations
- * Maps actual DB columns to expected interface
+ * Maps actual DB columns (from migration 00003_candidates.sql) to expected interface
  */
 function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
-  // Parse name - DB has 'name' column
-  const fullName = row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'Ukjent'
-  const nameParts = fullName.split(' ')
-  const firstName = nameParts[0] || ''
-  const lastName = nameParts.slice(1).join(' ') || ''
-
-  // Map rolle/primary_rank to primary_role
-  const primaryRole = row.primary_rank || row.rolle || 'Ikke spesifisert'
-
-  // Map years_of_experience or parse erfaring
-  let experienceYears = row.years_of_experience || 0
-  if (!experienceYears && row.erfaring) {
-    const match = row.erfaring.match(/(\d+)/)
-    if (match) experienceYears = parseInt(match[1], 10)
-  }
-
-  // Map employment_status to availability_status
-  const availabilityStatus = row.employment_status || 'available'
-
-  // Map verification_status to compliance_status
-  const complianceStatus = row.verification_status || row.compliance_state || 'pending_bankid'
+  const firstName = row.first_name || ''
+  const lastName = row.last_name || ''
+  const fullName = `${firstName} ${lastName}`.trim() || 'Ukjent'
 
   return {
     id: row.id,
@@ -42,25 +24,22 @@ function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
     last_name: lastName,
     full_name: fullName,
     email: row.email,
-    phone: row.phone || row.mobile || null,
+    phone: row.phone || null,
     avatar_url: row.avatar_url || null,
-    primary_role: primaryRole,
-    secondary_roles: row.secondary_ranks || [],
-    experience_years: experienceYears,
-    availability_status: availabilityStatus,
-    availability_date: row.available_from || null,
-    compliance_status: complianceStatus,
+    primary_role: row.primary_role || 'Ikke spesifisert',
+    secondary_roles: row.secondary_roles || [],
+    experience_years: row.experience_years || 0,
+    availability_status: row.availability_status || 'available',
+    availability_date: row.availability_date || null,
+    compliance_status: row.compliance_status || 'not_started',
     internal_rating: row.internal_rating || null,
     tags: row.tags || [],
-    fylke: row.fylke || row.county || null,
-    kommune: row.kommune || row.municipality || null,
+    fylke: row.fylke || null,
+    kommune: row.kommune || null,
     sectors: row.sectors || [],
     internal_notes: row.internal_notes || null,
     cv_summary: row.cv_summary || null,
-    // Additional fields from actual DB
-    status: row.status,
-    pipeline_stage: row.pipeline_stage,
-    cv_key: row.cv_key,
+    cv_key: row.cv_file_path,
     _raw: row,
   }
 }
@@ -125,42 +104,34 @@ export function useCreateCandidate() {
 
   return useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      // Map app schema fields to actual DB columns
+      // Map to actual DB columns (migration 00003_candidates.sql)
       const dbData: Record<string, unknown> = {
-        // Construct name from first_name + last_name (DB has both)
-        name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         phone: data.phone,
-        mobile: data.phone_secondary,
-        // Map primary_role to work_main array and primary_rank
-        work_main: data.primary_role ? [data.primary_role, ...(data.secondary_roles as string[] || [])] : data.secondary_roles,
-        primary_rank: data.primary_role,
-        secondary_ranks: data.secondary_roles,
-        // Map availability_status to status
-        status: data.availability_status === 'available' ? 'godkjent'
-          : data.availability_status === 'on_assignment' ? 'ansatt'
-          : data.availability_status === 'unavailable' ? 'avslått'
-          : 'pending',
-        available_from: data.availability_date,
-        // Map compliance_status to compliance_state
-        compliance_state: data.compliance_status === 'approved' ? 'verified' : 'pending',
-        // Direct mappings
+        phone_secondary: data.phone_secondary,
+        primary_role: data.primary_role,
+        secondary_roles: data.secondary_roles,
+        experience_years: data.experience_years,
+        availability_status: data.availability_status,
+        availability_date: data.availability_date,
+        availability_notes: data.availability_notes,
+        compliance_status: data.compliance_status,
+        compliance_notes: data.compliance_notes,
         fylke: data.fylke,
         kommune: data.kommune,
-        years_of_experience: data.experience_years,
         sectors: data.sectors,
         internal_notes: data.internal_notes,
-        // Other fields
+        internal_rating: data.internal_rating,
+        tags: data.tags,
+        cv_summary: data.cv_summary,
         date_of_birth: data.date_of_birth,
         nationality: data.nationality,
-        national_id_hash: data.national_id_number,
-        city: data.address_city,
-        country: data.address_country,
-        skills: data.cv_summary,
-        tilgjengelighet: data.availability_notes,
-        flagged_reason: data.compliance_notes,
+        address_street: data.address_street,
+        address_postal_code: data.address_postal_code,
+        address_city: data.address_city,
+        address_country: data.address_country,
       }
 
       // Remove undefined values
