@@ -24,40 +24,37 @@ import Link from 'next/link'
 import type { CandidateFilters as CandidateFiltersType, CandidateSort } from '@/types'
 import { useDebounce } from '@/hooks/use-debounce'
 
-// Filter options - matching actual database schema
-// employment_status column values
+// Filter options - matching actual database schema (from 00001_enums.sql)
+// availability_status enum values
 const AVAILABILITY_OPTIONS = [
   { value: 'available', label: 'Tilgjengelig' },
+  { value: 'available_soon', label: 'Snart tilgjengelig' },
   { value: 'on_assignment', label: 'På oppdrag' },
   { value: 'unavailable', label: 'Utilgjengelig' },
+  { value: 'inactive', label: 'Inaktiv' },
 ]
 
-// Pipeline stage + status for workflow filtering
-const STATUS_OPTIONS = [
-  { value: 'ny', label: 'Ny (ubehandlet)' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'godkjent', label: 'Godkjent' },
-  { value: 'avslått', label: 'Avslått' },
-]
-
-// verification_status column values for compliance
+// compliance_status enum values
 const COMPLIANCE_OPTIONS = [
-  { value: 'pending_bankid', label: 'Venter på BankID' },
-  { value: 'pending_documents', label: 'Venter på dokumenter' },
-  { value: 'pending_review', label: 'Under vurdering' },
-  { value: 'verified', label: 'Verifisert' },
+  { value: 'not_started', label: 'Ikke startet' },
+  { value: 'documents_pending', label: 'Venter på dokumenter' },
+  { value: 'review_pending', label: 'Under vurdering' },
+  { value: 'approved', label: 'Godkjent' },
+  { value: 'expired', label: 'Utløpt' },
   { value: 'rejected', label: 'Avvist' },
 ]
 
-// primary_rank column values from actual database
+// Common role values for primary_role column
 const ROLE_OPTIONS = [
-  { value: 'Skipper / kyst', label: 'Skipper / kyst' },
+  { value: 'Kaptein', label: 'Kaptein' },
+  { value: 'Skipper', label: 'Skipper' },
+  { value: 'Overstyrmann', label: 'Overstyrmann' },
   { value: 'Styrmann', label: 'Styrmann' },
   { value: 'Matros', label: 'Matros' },
-  { value: 'Dekksarbeider', label: 'Dekksarbeider' },
   { value: 'Maskinist', label: 'Maskinist' },
-  { value: 'Akvatekniker m/fagbrev', label: 'Akvatekniker' },
-  { value: 'Annet maritimt', label: 'Annet maritimt' },
+  { value: 'ETO', label: 'ETO' },
+  { value: 'Kokk', label: 'Kokk' },
+  { value: 'Akvatekniker', label: 'Akvatekniker' },
 ]
 
 export default function CandidatesPage() {
@@ -84,12 +81,10 @@ export default function CandidatesPage() {
       filters.availability = [...(filters.availability || []), filter.value as CandidateFiltersType['availability'] extends (infer T)[] | undefined ? T : never]
     } else if (filter.type === 'compliance') {
       filters.compliance = [...(filters.compliance || []), filter.value as CandidateFiltersType['compliance'] extends (infer T)[] | undefined ? T : never]
-    } else if (filter.type === 'status') {
-      filters.status = [...(filters.status || []), filter.value]
     }
   })
 
-  const handleAddFilter = useCallback((type: 'role' | 'availability' | 'compliance' | 'status', value: string, label: string) => {
+  const handleAddFilter = useCallback((type: 'role' | 'availability' | 'compliance', value: string, label: string) => {
     // Check if filter already exists
     const exists = activeFilters.some(f => f.type === type && f.value === value)
     if (!exists) {
@@ -219,34 +214,7 @@ export default function CandidatesPage() {
                     </div>
                   </div>
 
-                  {/* Status */}
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Status</p>
-                    <div className="flex flex-wrap gap-1">
-                      {STATUS_OPTIONS.map(opt => {
-                        const isActive = activeFilters.some(f => f.type === 'status' && f.value === opt.value)
-                        return (
-                          <Badge
-                            key={opt.value}
-                            variant={isActive ? 'default' : 'outline'}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              if (isActive) {
-                                handleRemoveFilter(`status-${opt.value}`)
-                              } else {
-                                handleAddFilter('status', opt.value, opt.label)
-                              }
-                            }}
-                          >
-                            {opt.label}
-                            {isActive && <X className="h-3 w-3 ml-1" />}
-                          </Badge>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Compliance / Verification */}
+                  {/* Compliance */}
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">Verifisering</p>
                     <div className="flex flex-wrap gap-1">
