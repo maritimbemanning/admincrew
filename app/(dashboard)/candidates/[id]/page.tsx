@@ -121,14 +121,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
   }
 
   const handleDownloadCv = async () => {
-    if (!candidate?._raw?.cv_key && !candidate?.cv_key) {
+    if (!candidate?._raw?.cv_file_path && !candidate?.cv_key) {
       toast.error('Ingen CV tilgjengelig')
       return
     }
 
     setIsDownloadingCv(true)
     try {
-      const cvKey = candidate._raw?.cv_key || candidate.cv_key
+      const cvKey = candidate._raw?.cv_file_path || candidate.cv_key
       const url = await getCvSignedUrl(cvKey!)
       if (url) {
         window.open(url, '_blank')
@@ -187,7 +187,7 @@ export default function CandidateProfilePage({ params }: PageProps) {
   const ComplianceIcon = compliance.icon
   // Access raw DB fields for additional data
   const raw = candidate._raw
-  const hasCv = !!raw?.cv_key || !!candidate.cv_key
+  const hasCv = !!raw?.cv_file_path || !!candidate.cv_key
   // Profile completeness
   const { score: profileScore, missing: missingFields } = calculateProfileCompleteness(candidate)
   // Handle potentially empty names
@@ -645,14 +645,14 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   <ComplianceIcon className="h-5 w-5" />
                   <span className="font-medium">{compliance.label}</span>
                 </div>
-                {raw?.verified_at && (
+                {raw?.compliance_checked_at && (
                   <div className="text-sm text-muted-foreground mt-2">
-                    Sist sjekket: {format(new Date(raw.verified_at), 'dd.MM.yyyy')}
+                    Sist sjekket: {format(new Date(raw.compliance_checked_at), 'dd.MM.yyyy')}
                   </div>
                 )}
-                {raw?.flagged_reason && (
+                {raw?.compliance_notes && (
                   <div className="text-sm text-muted-foreground">
-                    Merknad: {raw.flagged_reason}
+                    Merknad: {raw.compliance_notes}
                   </div>
                 )}
               </CardContent>
@@ -670,11 +670,6 @@ export default function CandidateProfilePage({ params }: PageProps) {
                 {candidate.availability_date && (
                   <div className="text-sm text-muted-foreground mt-2">
                     Fra: {format(new Date(candidate.availability_date), 'dd.MM.yyyy')}
-                  </div>
-                )}
-                {raw?.available_until && (
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Tilgjengelig til: {format(new Date(raw.available_until), 'dd.MM.yyyy')}
                   </div>
                 )}
               </CardContent>
@@ -769,10 +764,10 @@ export default function CandidateProfilePage({ params }: PageProps) {
                     <span>{format(new Date(raw.updated_at), 'dd.MM.yyyy')}</span>
                   </div>
                 )}
-                {raw?.source_table && (
+                {raw?.source && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Kilde</span>
-                    <span>{raw.source_table}</span>
+                    <span>{raw.source}</span>
                   </div>
                 )}
               </CardContent>
