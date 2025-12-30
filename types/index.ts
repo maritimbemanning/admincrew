@@ -9,104 +9,100 @@ export * from './database.types'
 // ═══════════════════════════════════════════════════════
 
 /**
- * This represents the ACTUAL candidates table schema in admincrew Supabase
- * Updated to match actual production database schema (2024-12)
+ * This represents the candidates table schema in admincrew Supabase
+ * Supports both migration schema (00003_candidates.sql) and legacy columns
  */
 export interface CandidateDbRow {
   id: string
   created_at: string
   updated_at: string | null
 
-  // Core identity - actual DB columns
-  name: string  // Primary name field in actual DB
-  email: string
-  phone: string | null
-  mobile: string | null
-
-  // Legacy name fields (may be null)
+  // Core identity - migration schema uses first_name/last_name
   first_name: string | null
   last_name: string | null
+  email: string
+  phone: string | null
+  phone_secondary: string | null
 
-  // Location - actual DB columns
-  county: string | null
-  municipality: string | null
-  fylke: string | null  // Norwegian location
+  // Location
+  fylke: string | null
   kommune: string | null
-  city: string | null
-  country: string | null
+  address_street: string | null
+  address_postal_code: string | null
+  address_city: string | null
+  address_country: string | null
   nationality: string | null
   date_of_birth: string | null
 
-  // Professional info - actual DB columns
-  primary_rank: string | null  // Actual column name for role
-  rolle: string | null  // Alternative role column
-  secondary_ranks: string[] | null
-  years_of_experience: number | null  // Actual column name
-  erfaring: string | null  // Norwegian experience text
+  // Professional info - migration schema
+  primary_role: string | null
+  secondary_roles: string[] | null
+  experience_years: number | null
+  experience_details: unknown | null  // JSONB
 
-  // Work preferences
-  work_main: string[] | null
-  wants_temporary: string | null
-  skills: string | null
-  other_comp: string | null
+  // Languages
+  languages: unknown | null  // JSONB
 
-  // Certifications - stored as JSONB in sertifikater column
-  sertifikater: unknown | null  // JSONB
-  stcw_has: string | null
-  stcw_mod: string[] | null
-  stcw_confirm: boolean | null
-  stcw_confirmed: boolean | null
-  deck_has: string | null
-  deck_class: string | null
+  // Rotation preferences
+  rotation_preferred: string[] | null
+  rotation_max_weeks_on: number | null
+  rotation_min_weeks_off: number | null
+  rotation_flexible: boolean | null
 
-  // Availability - actual DB columns
-  employment_status: string | null  // 'available', 'on_assignment', 'unavailable'
-  available_from: string | null
-  available_until: string | null
-  available_to: string | null
+  // Salary
+  salary_min_monthly_nok: number | null
+  salary_preferred_monthly_nok: number | null
+  salary_negotiable: boolean | null
 
-  // Compliance/Verification - actual DB columns
-  verification_status: string | null  // 'pending_bankid', 'pending_documents', 'verified', 'rejected'
-  compliance_state: string | null  // 'pending', etc.
-  bankid_verified_at: string | null
-  verified_by: string | null
-  verified_at: string | null
+  // Location preferences
+  location_preferred_regions: string[] | null
+  location_willing_to_relocate: boolean | null
 
-  // Pipeline/Status - actual DB columns
-  status: string | null  // 'pending', 'godkjent', 'avslått'
-  pipeline_stage: string | null  // 'ny', 'vurdert', etc.
+  // Sectors
+  sectors: string[] | null
+
+  // Availability - migration schema
+  availability_status: string | null  // 'available', 'available_soon', 'on_assignment', 'unavailable', 'inactive'
+  availability_date: string | null
+  availability_notes: string | null
+  availability_updated_at: string | null
+
+  // Compliance - migration schema
+  compliance_status: string | null  // 'not_started', 'documents_pending', 'review_pending', 'approved', 'expired', 'rejected'
+  compliance_checked_at: string | null
+  compliance_checked_by: string | null
+  compliance_notes: string | null
+  compliance_expires_at: string | null
+
+  // Profile quality
+  profile_completeness: number | null
+  cv_summary: string | null
+  cv_file_path: string | null
+
+  // Internal evaluation
+  internal_rating: number | null
+  internal_notes: string | null
+  tags: string[] | null
+
+  // Source
+  source: string | null
+  source_details: unknown | null  // JSONB
+  referred_by: string | null
+
+  // Legacy/Auth
+  user_id: string | null
+  legacy_id: string | null
+  legacy_source: string | null
 
   // Files
-  cv_key: string | null
-  certs_key: string | null
-
-  // Additional fields
   avatar_url: string | null
-  sectors: string[] | null
-  departments: string[] | null
-  positions: string[] | null
-  vessel_types: string[] | null
-  internal_notes: string | null
-  internal_rating: number | null
-  tags: string[] | null
-  cv_summary: string | null
 
-  // Rate/Compensation
-  expected_daily_rate: number | null
-  currency: string | null
-  preferred_contract_length_months: number | null
-
-  // Meta
-  is_active: boolean | null
-  is_encrypted: boolean | null
-  gdpr_consent: boolean | null
-  source_table: string | null
-  source_ip: string | null
-  submitted_at: string | null
+  // Audit
+  created_by: string | null
+  updated_by: string | null
   archived_at: string | null
-  flagged_reason: string | null
-  ocr_confidence_score: number | null
-  clerk_user_id: string | null
+  archived_by: string | null
+  archived_reason: string | null
 }
 
 // ═══════════════════════════════════════════════════════
