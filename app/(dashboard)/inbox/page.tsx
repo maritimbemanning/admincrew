@@ -417,9 +417,10 @@ function ApplicationCard({
             {!compact && (
               <>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Rolle: <span className="text-foreground">{app.rolle || 'Ikke angitt'}</span>
-                  {app.erfaring && <span className="ml-2">• {app.erfaring} års erfaring</span>}
-                  {app.fylke && <span className="ml-2">• {app.fylke}</span>}
+                  Rolle: <span className="text-foreground">{app.primary_role || 'Ikke angitt'}</span>
+                  {app.experience_years != null && app.experience_years > 0 && (
+                    <span className="ml-2">• {app.experience_years} års erfaring</span>
+                  )}
                 </p>
 
                 <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -531,7 +532,7 @@ function LeadCard({
   isConverting: boolean
   pools?: Array<{ id: string; name: string; color: string }>
 }) {
-  const isConverted = lead.pipeline_status === 'converted' || lead.status === 'konvertert'
+  const isConverted = lead.status === 'konvertert' || lead.status === 'converted'
 
   return (
     <Card>
@@ -539,10 +540,10 @@ function LeadCard({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-medium">{lead.name}</h4>
-              {lead.role && (
+              <h4 className="font-medium">{lead.navn}</h4>
+              {lead.type && (
                 <Badge variant="secondary" className="text-xs">
-                  {lead.role}
+                  {lead.type}
                 </Badge>
               )}
               {isConverted && (
@@ -556,18 +557,12 @@ function LeadCard({
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Mail className="h-3 w-3" />
-                {lead.email}
+                {lead.epost}
               </span>
-              {lead.phone && (
+              {lead.telefon && (
                 <span className="flex items-center gap-1">
                   <Phone className="h-3 w-3" />
-                  {lead.phone}
-                </span>
-              )}
-              {lead.experience && (
-                <span className="flex items-center gap-1">
-                  <Briefcase className="h-3 w-3" />
-                  {lead.experience} års erfaring
+                  {lead.telefon}
                 </span>
               )}
               <span className="flex items-center gap-1">
@@ -576,29 +571,14 @@ function LeadCard({
               </span>
             </div>
 
-            {lead.notes && (
+            {lead.melding && (
               <p className="text-sm mt-2 text-muted-foreground">
-                {lead.notes}
+                {lead.melding}
               </p>
             )}
           </div>
 
           <div className="flex items-center gap-2">
-            {lead.cv_url && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  const url = await getCvSignedUrl(lead.cv_url!)
-                  if (url) window.open(url, '_blank')
-                  else toast.error('Kunne ikke laste ned CV')
-                }}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                CV
-              </Button>
-            )}
-
             {!isConverted && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

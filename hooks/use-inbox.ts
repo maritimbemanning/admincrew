@@ -7,63 +7,50 @@ import { createClient } from '@/lib/supabase/client'
 // TYPES - Matching actual database tables
 // ═══════════════════════════════════════════════════════
 
-// candidates table - new registrations from bluecrew.no
+// candidates table - ALL candidates from bluecrew.no (both interest forms and registrations)
 export interface InboxCandidate {
   id: string
-  name: string
+  first_name: string | null
+  last_name: string | null
+  name: string | null
   email: string
   phone: string | null
   status: string
   pipeline_stage: string | null
   cv_key: string | null
-  rolle: string | null
-  erfaring: string | null
-  fylke: string | null
+  primary_role: string | null
+  experience_years: number | null
+  internal_notes: string | null
+  source: string | null
   created_at: string
 }
 
-// candidate_interest table - interest leads from bluecrew.no
-export interface InboxInterest {
-  id: string
-  name: string
-  email: string
-  phone: string | null
-  role: string
-  pipeline_status: string
-  status: string
-  experience: number | null
-  notes: string | null
-  cv_url: string | null
-  created_at: string
-}
-
-// leads table - B2B staffing needs
+// staffing_needs table - B2B staffing needs from bluecrew.no
 export interface InboxLead {
   id: string
-  company: string
-  contact: string
-  email: string
-  phone: string | null
-  need_type: string
-  need_duration: string
-  num_people: string | null
-  start_date: string | null
-  work_location: string | null
+  bedrift: string | null
+  kontakt_navn: string
+  kontakt_epost: string
+  kontakt_telefon: string | null
+  fartoytype: string | null
+  stillinger: string | null
+  antall: number | null
+  oppstart: string | null
   status: string
   created_at: string
 }
 
 export interface InboxStats {
-  newApplications: number
-  newLeads: number
+  newCandidates: number
   newStaffingNeeds: number
   total: number
 }
 
 // Legacy type aliases for backwards compatibility
 export type JobApplication = InboxCandidate
-export type InterestLead = InboxInterest
+export type InterestLead = InboxCandidate // Now same as candidate
 export type StaffingNeed = InboxLead
+export type InboxInterest = InboxCandidate // Deprecated - use InboxCandidate
 
 // ═══════════════════════════════════════════════════════
 // QUERY KEYS
@@ -86,7 +73,7 @@ async function fetchNewCandidates(): Promise<InboxCandidate[]> {
 
   const { data, error } = await supabase
     .from('candidates')
-    .select('id, name, email, phone, status, pipeline_stage, cv_key, rolle, erfaring, fylke, created_at')
+    .select('id, first_name, last_name, name, email, phone, status, pipeline_stage, cv_key, primary_role, experience_years, internal_notes, source, created_at')
     .eq('pipeline_stage', 'ny')
     .order('created_at', { ascending: false })
 
@@ -98,28 +85,20 @@ async function fetchNewCandidates(): Promise<InboxCandidate[]> {
   return data || []
 }
 
-async function fetchNewInterests(): Promise<InboxInterest[]> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase
-    .from('candidate_interest')
-    .select('id, name, email, phone, role, pipeline_status, status, experience, notes, cv_url, created_at')
-    .eq('pipeline_status', 'new')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('[fetchNewInterests] Error:', error)
-    throw error
-  }
-  return data || []
+// DEPRECATED: interest_leads table no longer exists - all data is in candidates
+async function fetchNewInterests(): Promise<InboxCandidate[]> {
+  // Return empty - interest_leads table was merged into candidates
+  console.warn('[fetchNewInterests] DEPRECATED: interest_leads merged into candidates table')
+  return []
 }
 
 async function fetchNewLeads(): Promise<InboxLead[]> {
   const supabase = createClient()
 
   const { data, error } = await supabase
-    .from('leads')
-    .select('id, company, contact, email, phone, need_type, need_duration, num_people, start_date, work_location, status, created_at')
+    .from('staffing_needs')
+    .select('id, bedrift, kontakt_navn, kontakt_epost, kontakt_telefon, fartoytype, stillinger, antall, oppstart, status, created_at')
+    .eq('status', 'new')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -132,21 +111,18 @@ async function fetchNewLeads(): Promise<InboxLead[]> {
 async function fetchInboxStats(): Promise<InboxStats> {
   const supabase = createClient()
 
-  const [candidates, interests, leads] = await Promise.all([
+  const [candidates, leads] = await Promise.all([
     supabase.from('candidates').select('id', { count: 'exact', head: true }).eq('pipeline_stage', 'ny'),
-    supabase.from('candidate_interest').select('id', { count: 'exact', head: true }).eq('pipeline_status', 'new'),
-    supabase.from('leads').select('id', { count: 'exact', head: true }),
+    supabase.from('staffing_needs').select('id', { count: 'exact', head: true }).eq('status', 'new'),
   ])
 
   if (candidates.error) console.error('[fetchInboxStats] candidates error:', candidates.error)
-  if (interests.error) console.error('[fetchInboxStats] interests error:', interests.error)
   if (leads.error) console.error('[fetchInboxStats] leads error:', leads.error)
 
   return {
-    newApplications: candidates.count || 0,
-    newLeads: interests.count || 0,
+    newCandidates: candidates.count || 0,
     newStaffingNeeds: leads.count || 0,
-    total: (candidates.count || 0) + (interests.count || 0) + (leads.count || 0),
+    total: (candidates.count || 0) + (leads.count || 0),
   }
 }
 
@@ -188,20 +164,21 @@ export const useNewCandidates = useJobApplications
 export const useNewInterests = useInterestLeads
 export const useNewLeads = useStaffingNeeds
 
-// Stats hooks - aliases to useInboxStats for backwards compatibility
+// Stats hooks - simplified since interest_leads merged into candidates
 export function useJobApplicationStats() {
   const { data: stats, ...rest } = useInboxStats()
   return {
     ...rest,
-    data: stats ? { count: stats.newApplications, pending: stats.newApplications, new: stats.newApplications, total: stats.newApplications } : null
+    data: stats ? { count: stats.newCandidates, pending: stats.newCandidates, new: stats.newCandidates, total: stats.newCandidates } : null
   }
 }
 
+// DEPRECATED: interest_leads merged into candidates
 export function useInterestLeadStats() {
   const { data: stats, ...rest } = useInboxStats()
   return {
     ...rest,
-    data: stats ? { count: stats.newLeads, pending: stats.newLeads, new: stats.newLeads, total: stats.newLeads } : null
+    data: { count: 0, pending: 0, new: 0, total: 0 } // Always 0 - merged into candidates
   }
 }
 
@@ -253,75 +230,19 @@ export function useMarkCandidateReviewed() {
   })
 }
 
-// Convert interest lead to candidate
+// DEPRECATED: interest_leads merged into candidates - this is now a no-op
 export function useConvertInterestToCandidate() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
 
   return useMutation({
-    mutationFn: async (interestId: string) => {
-      // 1. Get the interest lead
-      const { data: interest, error: interestError } = await supabase
-        .from('candidate_interest')
-        .select('*')
-        .eq('id', interestId)
-        .single()
-
-      if (interestError) throw interestError
-
-      // 2. Check if candidate already exists (by email)
-      const { data: existing } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('email', interest.email)
-        .single()
-
-      if (existing) {
-        // Update interest status
-        await supabase
-          .from('candidate_interest')
-          .update({ pipeline_status: 'converted', status: 'konvertert' })
-          .eq('id', interestId)
-
-        return { candidateId: existing.id, isNew: false }
-      }
-
-      // 3. Create new candidate
-      const { data: newCandidate, error: createError } = await supabase
-        .from('candidates')
-        .insert({
-          name: interest.name,
-          email: interest.email,
-          phone: interest.phone,
-          rolle: interest.role,
-          erfaring: interest.experience?.toString() || null,
-          cv_key: interest.cv_url,
-          status: 'pending',
-          pipeline_stage: 'ny',
-          source: 'interest_lead',
-        })
-        .select('id')
-        .single()
-
-      if (createError) throw createError
-
-      // 4. Update interest status
-      await supabase
-        .from('candidate_interest')
-        .update({ pipeline_status: 'converted', status: 'konvertert' })
-        .eq('id', interestId)
-
-      return { candidateId: newCandidate.id, isNew: true }
+    mutationFn: async (candidateId: string) => {
+      // No-op - all interests are already in candidates table
+      console.warn('[useConvertInterestToCandidate] DEPRECATED: interests already in candidates table')
+      return { candidateId, isNew: false }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inboxKeys.all })
       queryClient.invalidateQueries({ queryKey: ['candidates'] })
-    },
-    onError: (error, interestId) => {
-      console.error('[useConvertInterestToCandidate] Failed:', {
-        interestId,
-        error: error instanceof Error ? error.message : error,
-      })
     },
   })
 }
@@ -351,26 +272,17 @@ export function useUpdateCandidateStatus() {
   })
 }
 
-// Update interest status
+// DEPRECATED: interest_leads merged into candidates - use useUpdateCandidateStatus instead
 export function useUpdateInterestStatus() {
   const queryClient = useQueryClient()
-  const supabase = createClient()
 
   return useMutation({
-    mutationFn: async ({ id, status, pipeline_status }: { id: string; status?: string; pipeline_status?: string }) => {
-      const updates: Record<string, string> = {}
-      if (status) updates.status = status
-      if (pipeline_status) updates.pipeline_status = pipeline_status
-
-      const { error } = await supabase
-        .from('candidate_interest')
-        .update(updates)
-        .eq('id', id)
-
-      if (error) throw error
+    mutationFn: async ({ id }: { id: string; status?: string; pipeline_status?: string }) => {
+      console.warn('[useUpdateInterestStatus] DEPRECATED: use useUpdateCandidateStatus instead')
+      return { id }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inboxKeys.leads() })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.all })
     },
   })
 }
@@ -411,7 +323,7 @@ export function useUpdateLeadStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
-        .from('leads')
+        .from('staffing_needs')
         .update({ status })
         .eq('id', id)
 
@@ -448,16 +360,16 @@ export function useUpdateJobApplicationStatus() {
 // Update staffing need status - alias
 export const useUpdateStaffingNeedStatus = useUpdateLeadStatus
 
-// Convert lead to customer request
+// Convert staffing need to customer request
 export function useConvertToCustomerRequest() {
   const queryClient = useQueryClient()
   const supabase = createClient()
 
   return useMutation({
     mutationFn: async (leadId: string) => {
-      // 1. Get the lead
+      // 1. Get the staffing need
       const { data: lead, error: leadError } = await supabase
-        .from('leads')
+        .from('staffing_needs')
         .select('*')
         .eq('id', leadId)
         .single()
@@ -468,18 +380,17 @@ export function useConvertToCustomerRequest() {
       const { data: request, error: requestError } = await supabase
         .from('customer_requests')
         .insert({
-          title: `${lead.need_type} - ${lead.company}`,
-          organization_name: lead.company,
-          contact_name: lead.contact,
-          contact_email: lead.email,
-          contact_phone: lead.phone,
-          role_needed: lead.need_type,
-          quantity: lead.num_people ? parseInt(lead.num_people) : 1,
-          start_date: lead.start_date,
-          duration_description: lead.need_duration,
-          work_location: lead.work_location,
+          title: `${lead.stillinger || 'Bemanningsbehov'} - ${lead.bedrift || 'Ukjent bedrift'}`,
+          organization_name: lead.bedrift,
+          contact_name: lead.kontakt_navn,
+          contact_email: lead.kontakt_epost,
+          contact_phone: lead.kontakt_telefon,
+          role_needed: lead.stillinger,
+          quantity: lead.antall || 1,
+          start_date: lead.oppstart,
+          work_location: lead.fartoytype,
           status: 'draft',
-          source: 'lead',
+          source: 'staffing_need',
           source_lead_id: leadId,
         })
         .select('id')
@@ -487,9 +398,9 @@ export function useConvertToCustomerRequest() {
 
       if (requestError) throw requestError
 
-      // 3. Update lead status
+      // 3. Update staffing need status
       await supabase
-        .from('leads')
+        .from('staffing_needs')
         .update({ status: 'converted' })
         .eq('id', leadId)
 
