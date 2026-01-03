@@ -3,7 +3,7 @@
 import { use, useState, useRef } from 'react'
 import Link from 'next/link'
 import { notFound, useRouter } from 'next/navigation'
-import { useCandidate, useUpdateCandidateRating, useUpdateCandidateTags, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
+import { useCandidate, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
 import { useUploadCandidateCv, calculateProfileCompleteness, useArchiveCandidate } from '@/hooks/use-candidate'
 import { getCvSignedUrl } from '@/hooks/use-inbox'
 import { toast } from 'sonner'
@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
@@ -28,9 +27,7 @@ import {
   Phone,
   Mail,
   MapPin,
-  Calendar,
   FileText,
-  Shield,
   Briefcase,
   Clock,
   MoreHorizontal,
@@ -47,7 +44,6 @@ import {
 import { cn } from '@/lib/utils'
 import type { AvailabilityStatus, ComplianceStatus } from '@/types'
 import { format } from 'date-fns'
-import { nb } from 'date-fns/locale'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -589,6 +585,7 @@ export default function CandidateProfilePage({ params }: PageProps) {
                       accept=".pdf,.doc,.docx"
                       onChange={handleCvUpload}
                       className="hidden"
+                      aria-label="Last opp CV"
                     />
                     <Button 
                       className="w-full justify-start" 
@@ -615,6 +612,7 @@ export default function CandidateProfilePage({ params }: PageProps) {
                       accept=".pdf,.doc,.docx"
                       onChange={handleCvUpload}
                       className="hidden"
+                      aria-label="Erstatt CV"
                     />
                     <Button 
                       className="w-full justify-start text-muted-foreground" 
