@@ -78,6 +78,7 @@ export interface CandidateDbRow {
   profile_completeness: number | null
   cv_summary: string | null
   cv_file_path: string | null
+  cv_key: string | null
 
   // Internal evaluation
   internal_rating: number | null

@@ -109,31 +109,34 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
         last_name: data.last_name,
         email: data.email,
         phone: data.phone,
-        phone_secondary: data.phone_secondary,
+        mobile: data.mobile,
         date_of_birth: data.date_of_birth,
         nationality: data.nationality,
-        // Location
+        // Location - map form fields to DB columns
         fylke: data.fylke,
         kommune: data.kommune,
-        address_city: data.address_city,
-        address_country: data.address_country,
+        address_city: data.city,
+        address_country: data.country,
         // Professional
         primary_role: data.primary_role,
         secondary_roles: data.secondary_roles,
         experience_years: data.experience_years,
         sectors: data.sectors,
         cv_summary: data.cv_summary,
+        languages: data.languages,
         // Availability
         availability_status: data.availability_status,
         availability_date: data.availability_date,
-        availability_notes: data.availability_notes,
+        // Rate
+        expected_daily_rate: data.expected_daily_rate,
+        currency: data.currency,
         // Internal
         internal_rating: data.internal_rating,
         internal_notes: data.internal_notes,
         tags: data.tags,
         // Compliance
         compliance_status: data.compliance_status,
-        compliance_notes: data.compliance_notes,
+        flagged_reason: data.flagged_reason,
       }
 
       if (mode === 'create') {
