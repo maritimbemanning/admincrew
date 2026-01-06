@@ -38,8 +38,14 @@ export function useAssignments(options: UseAssignmentsOptions = {}) {
   const { filters = {}, page = 1, pageSize = 50 } = options
   const supabase = createClient()
 
+  const queryFilters: AssignmentFilters & { page: number; pageSize: number } = {
+    ...filters,
+    page,
+    pageSize,
+  }
+
   return useQuery({
-    queryKey: assignmentKeys.list({ ...filters, page, pageSize } as any),
+    queryKey: assignmentKeys.list(queryFilters),
     queryFn: async () => {
       let query = supabase
         .from('assignments')

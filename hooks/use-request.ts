@@ -82,11 +82,19 @@ export function useRequestShortlist(requestId: string | undefined) {
 // SHORTLIST MUTATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+export interface MatchBreakdown {
+  certifications?: { score: number; matched: string[]; missing: string[] }
+  experience?: { score: number; years: number }
+  availability?: { score: number; status: string }
+  rating?: { score: number; rating: number | null }
+  proximity?: { score: number; fylke: string | null }
+}
+
 interface AddToShortlistInput {
   request_id: string
   candidate_id: string
   match_score?: number
-  match_breakdown?: any
+  match_breakdown?: MatchBreakdown
   notes?: string
 }
 

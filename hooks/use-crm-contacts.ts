@@ -197,10 +197,16 @@ async function fetchPipelineData(filters?: CrmContactFilters): Promise<{
     'lost',
   ]
 
-  const byStatus: Record<CrmContactStatus, CrmContact[]> = {} as any
-  statusOrder.forEach(status => {
-    byStatus[status] = []
-  })
+  const byStatus: Record<CrmContactStatus, CrmContact[]> = {
+    interested: [],
+    qualified: [],
+    contacted: [],
+    meeting_booked: [],
+    quote_sent: [],
+    negotiation: [],
+    won: [],
+    lost: [],
+  }
 
   contacts.forEach(contact => {
     const status = contact.status || 'interested'
@@ -229,20 +235,31 @@ async function fetchPipelineData(filters?: CrmContactFilters): Promise<{
     ? contacts.reduce((sum, c) => sum + (c.probability || 0), 0) / contacts.length
     : 0
 
-  const stats: PipelineStats = {
-    totalContacts,
-    totalValue,
-    avgProbability,
-    byStatus: {} as any,
+  const byStatusStats: Record<CrmContactStatus, { count: number; value: number }> = {
+    interested: { count: 0, value: 0 },
+    qualified: { count: 0, value: 0 },
+    contacted: { count: 0, value: 0 },
+    meeting_booked: { count: 0, value: 0 },
+    quote_sent: { count: 0, value: 0 },
+    negotiation: { count: 0, value: 0 },
+    won: { count: 0, value: 0 },
+    lost: { count: 0, value: 0 },
   }
 
   statusOrder.forEach(status => {
     const statusContacts = byStatus[status] || []
-    stats.byStatus[status] = {
+    byStatusStats[status] = {
       count: statusContacts.length,
       value: statusContacts.reduce((sum, c) => sum + (c.deal_value || 0), 0),
     }
   })
+
+  const stats: PipelineStats = {
+    totalContacts,
+    totalValue,
+    avgProbability,
+    byStatus: byStatusStats,
+  }
 
   return { columns, stats }
 }

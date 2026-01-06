@@ -36,8 +36,14 @@ export function useRequests(options: UseRequestsOptions = {}) {
   const { filters = {}, page = 1, pageSize = 50 } = options
   const supabase = createClient()
 
+  const queryFilters: RequestFilters & { page: number; pageSize: number } = {
+    ...filters,
+    page,
+    pageSize,
+  }
+
   return useQuery({
-    queryKey: requestKeys.list({ ...filters, page, pageSize } as any),
+    queryKey: requestKeys.list(queryFilters),
     queryFn: async () => {
       let query = supabase
         .from('customer_requests')

@@ -41,7 +41,12 @@ import {
   INDUSTRIES,
   type ContactFormData,
 } from '@/lib/validations/crm'
-import type { CrmContact } from '@/types/crm'
+import type {
+  CrmContact,
+  CrmContactStatus,
+  CrmContactSource,
+  CrmPriorityLevel
+} from '@/types/crm'
 import {
   CRM_CONTACT_STATUSES,
   CRM_CONTACT_STATUS_LABELS,
@@ -56,7 +61,7 @@ interface ContactFormProps {
   onSubmit: (data: ContactFormData) => Promise<void>
   onCancel: () => void
   isLoading?: boolean
-  defaultStatus?: string
+  defaultStatus?: CrmContactStatus
 }
 
 export function ContactForm({
@@ -96,7 +101,7 @@ export function ContactForm({
         }
       : {
           ...defaultContactValues,
-          status: (defaultStatus as any) || 'interested',
+          status: defaultStatus || 'interested',
         },
   })
 

@@ -33,7 +33,7 @@ import { Loader2, Save, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 import { useCreateCandidate, useUpdateCandidate } from '@/hooks'
-import type { TablesInsert } from '@/types/database.types'
+import type { TablesInsert, AvailabilityStatus, ComplianceStatus } from '@/types/database.types'
 import {
   candidateFormSchema,
   type CandidateFormData,
@@ -57,6 +57,36 @@ interface CandidateFormProps {
   mode: 'create' | 'edit'
   candidateId?: string
   initialData?: Partial<CandidateFormData>
+}
+
+// Type for the database input when saving candidate
+interface CandidateDbInput {
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string | null
+  mobile?: string | null
+  date_of_birth?: string | null
+  nationality?: string | null
+  fylke?: string | null
+  kommune?: string | null
+  address_city?: string | null
+  address_country?: string | null
+  primary_role: string
+  secondary_roles?: string[]
+  experience_years?: number
+  sectors?: string[]
+  cv_summary?: string | null
+  languages?: Array<{ code: string; level: string }>
+  availability_status?: AvailabilityStatus
+  availability_date?: string | null
+  expected_daily_rate?: number | null
+  currency?: string
+  internal_rating?: number | null
+  internal_notes?: string | null
+  tags?: string[]
+  compliance_status?: ComplianceStatus
+  flagged_reason?: string | null
 }
 
 // ═══════════════════════════════════════════════════════
@@ -103,8 +133,7 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
   async function onSubmit(data: CandidateFormData) {
     try {
       // Transform form data to database format (migration 00003_candidates.sql)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const dbData: any = {
+      const dbData: CandidateDbInput = {
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
@@ -125,7 +154,7 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
         cv_summary: data.cv_summary,
         languages: data.languages,
         // Availability
-        availability_status: data.availability_status,
+        availability_status: data.availability_status as AvailabilityStatus,
         availability_date: data.availability_date,
         // Rate
         expected_daily_rate: data.expected_daily_rate,
@@ -135,7 +164,7 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
         internal_notes: data.internal_notes,
         tags: data.tags,
         // Compliance
-        compliance_status: data.compliance_status,
+        compliance_status: data.compliance_status as ComplianceStatus,
         flagged_reason: data.flagged_reason,
       }
 
