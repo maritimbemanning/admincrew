@@ -8,11 +8,20 @@ import { useCreateCrmContact } from '@/hooks/use-crm-contacts'
 import type { ContactFormData } from '@/lib/validations/crm'
 import { toast } from 'sonner'
 import { Suspense } from 'react'
+import type { CrmContactStatus } from '@/types/crm'
+import { CRM_CONTACT_STATUSES } from '@/types/crm'
 
 function NewContactContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const defaultStatus = searchParams.get('status') || undefined
+  const statusParam = searchParams.get('status')
+
+  // Validate that status is a valid CrmContactStatus
+  const isValidStatus = (status: string): status is CrmContactStatus =>
+    (CRM_CONTACT_STATUSES as readonly string[]).includes(status)
+
+  const defaultStatus: CrmContactStatus | undefined =
+    statusParam && isValidStatus(statusParam) ? statusParam : undefined
 
   const createContact = useCreateCrmContact()
 
