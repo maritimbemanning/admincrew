@@ -1,10 +1,95 @@
 /**
  * Operations API Helper
- * 
+ *
  * Server-side API functions for operations (requests, assignments).
  */
 
 import { createClient } from '@/lib/supabase/server'
+import type {
+  TablesInsert,
+  TablesUpdate,
+  CustomerRequest,
+  Assignment,
+  RequestStatus,
+  AssignmentStatus,
+  Candidate,
+  Organization
+} from '@/types/database.types'
+
+// ═══════════════════════════════════════════════════════
+// INPUT TYPES
+// ═══════════════════════════════════════════════════════
+
+export type CreateRequestInput = TablesInsert<'customer_requests'>
+export type UpdateRequestInput = TablesUpdate<'customer_requests'>
+export type CreateAssignmentInput = TablesInsert<'assignments'>
+export type UpdateAssignmentInput = TablesUpdate<'assignments'>
+
+// ═══════════════════════════════════════════════════════
+// RESPONSE TYPES
+// ═══════════════════════════════════════════════════════
+
+export interface RequestWithRelations extends CustomerRequest {
+  crm_organizations?: Pick<Organization, 'id' | 'name'> | null
+  request_skills?: Array<{
+    skill_id: string
+    skills: { id: string; name: string } | null
+  }>
+  request_certifications?: Array<{
+    certification_id: string
+    certifications: { id: string; name: string } | null
+  }>
+  shortlist_candidates?: Array<{
+    id: string
+    candidate_id: string
+    status: string
+    candidates: Candidate | null
+  }>
+}
+
+export interface AssignmentWithRelations extends Assignment {
+  candidates?: Pick<Candidate, 'id' | 'first_name' | 'last_name' | 'email' | 'phone'> | null
+  requests?: {
+    id: string
+    title: string
+    reference_number?: string
+    request_number?: string
+    crm_organizations?: Pick<Organization, 'id' | 'name'> | null
+  } | null
+  contracts?: Array<{
+    id: string
+    status: string
+    signed_at: string | null
+  }>
+  timesheets?: Array<{
+    id: string
+    period_start: string
+    period_end: string
+    status: string
+    total_hours: number | null
+  }>
+}
+
+export interface ReleaseChecklistItem {
+  id: string
+  assignment_id: string
+  item: string
+  order: number
+  completed: boolean
+  completed_at: string | null
+  completed_by: string | null
+}
+
+export interface OperationsStats {
+  requests: {
+    total: number
+    byStatus: Record<string, number>
+  }
+  assignments: {
+    total: number
+    byStatus: Record<string, number>
+  }
+}
 
 // Requests
 
@@ -97,20 +182,20 @@ export async function getRequest(id: string) {
   return data
 }
 
-export async function createRequest(input: any) {
+export async function createRequest(input: CreateRequestInput): Promise<CustomerRequest> {
   const supabase = await createClient()
 
   // Generate reference number
   const { count: countData } = await supabase
-    .from('requests')
+    .from('customer_requests')
     .select('id', { count: 'exact', head: true })
 
   const count = countData || 0
-  const referenceNumber = `REQ-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`
+  const requestNumber = `REQ-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`
 
   const { data, error } = await supabase
-    .from('requests')
-    .insert({ ...input, reference_number: referenceNumber })
+    .from('customer_requests')
+    .insert({ ...input, request_number: requestNumber })
     .select()
     .single()
 
@@ -119,11 +204,11 @@ export async function createRequest(input: any) {
   return data
 }
 
-export async function updateRequest(id: string, input: any) {
+export async function updateRequest(id: string, input: UpdateRequestInput): Promise<CustomerRequest> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('requests')
+    .from('customer_requests')
     .update(input)
     .eq('id', id)
     .select()
@@ -145,7 +230,7 @@ export async function deleteRequest(id: string) {
   if (error) throw error
 }
 
-export async function updateRequestStatus(id: string, status: string) {
+export async function updateRequestStatus(id: string, status: RequestStatus): Promise<CustomerRequest> {
   return updateRequest(id, { status })
 }
 
@@ -262,7 +347,7 @@ export async function getAssignment(id: string) {
   return data
 }
 
-export async function createAssignment(input: any) {
+export async function createAssignment(input: CreateAssignmentInput): Promise<Assignment> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -281,7 +366,7 @@ export async function createAssignment(input: any) {
   return data
 }
 
-export async function updateAssignment(id: string, input: any) {
+export async function updateAssignment(id: string, input: UpdateAssignmentInput): Promise<Assignment> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -296,7 +381,7 @@ export async function updateAssignment(id: string, input: any) {
   return data
 }
 
-export async function updateAssignmentStatus(id: string, status: string) {
+export async function updateAssignmentStatus(id: string, status: AssignmentStatus): Promise<Assignment> {
   return updateAssignment(id, { status })
 }
 
@@ -336,24 +421,28 @@ export async function updateChecklistItem(id: string, completed: boolean) {
 
 // Dashboard stats
 
-export async function getOperationsStats() {
+export async function getOperationsStats(): Promise<OperationsStats> {
   const supabase = await createClient()
 
   const [requestsResult, assignmentsResult] = await Promise.all([
     supabase
-      .from('requests')
+      .from('customer_requests')
       .select('status', { count: 'exact' }),
     supabase
       .from('assignments')
       .select('status', { count: 'exact' }),
   ])
 
-  const requestsByStatus = requestsResult.data?.reduce((acc: any, r: any) => {
+  interface StatusRow {
+    status: string
+  }
+
+  const requestsByStatus = (requestsResult.data as StatusRow[] | null)?.reduce<Record<string, number>>((acc, r) => {
     acc[r.status] = (acc[r.status] || 0) + 1
     return acc
   }, {})
 
-  const assignmentsByStatus = assignmentsResult.data?.reduce((acc: any, a: any) => {
+  const assignmentsByStatus = (assignmentsResult.data as StatusRow[] | null)?.reduce<Record<string, number>>((acc, a) => {
     acc[a.status] = (acc[a.status] || 0) + 1
     return acc
   }, {})

@@ -1,10 +1,24 @@
 /**
  * Candidates API Helper
- * 
+ *
  * Server-side API functions for candidate operations.
  */
 
 import { createClient } from '@/lib/supabase/server'
+import type {
+  TablesInsert,
+  TablesUpdate,
+  Candidate,
+  AvailabilityStatus,
+  ComplianceStatus
+} from '@/types/database.types'
+
+// ═══════════════════════════════════════════════════════
+// INPUT TYPES
+// ═══════════════════════════════════════════════════════
+
+export type CreateCandidateInput = TablesInsert<'candidates'>
+export type UpdateCandidateInput = TablesUpdate<'candidates'>
 
 export interface CandidateFilters {
   search?: string
@@ -102,7 +116,7 @@ export async function getCandidate(id: string) {
 /**
  * Create new candidate
  */
-export async function createCandidate(input: any) {
+export async function createCandidate(input: CreateCandidateInput): Promise<Candidate> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -119,7 +133,7 @@ export async function createCandidate(input: any) {
 /**
  * Update candidate
  */
-export async function updateCandidate(id: string, input: any) {
+export async function updateCandidate(id: string, input: UpdateCandidateInput): Promise<Candidate> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -275,11 +289,27 @@ export async function getCandidatesForMatching(
 
   if (error) throw error
 
+  // Define types for the query result
+  interface CandidateSkillRelation {
+    skill_id: string
+    skills: { id: string; name: string } | null
+  }
+
+  interface CandidateCertRelation {
+    certification_id: string
+    certifications: { id: string; name: string } | null
+  }
+
+  interface CandidateWithRelations extends Candidate {
+    candidate_skills?: CandidateSkillRelation[]
+    candidate_certifications?: CandidateCertRelation[]
+  }
+
   // Score and filter candidates
-  const scoredCandidates = data.map((candidate: any) => {
+  const scoredCandidates = (data as CandidateWithRelations[]).map((candidate) => {
     let score = 0
-    const candidateSkillIds = candidate.candidate_skills?.map((cs: any) => cs.skill_id) || []
-    
+    const candidateSkillIds = candidate.candidate_skills?.map((cs) => cs.skill_id) || []
+
     // Score based on matching skills
     requirements.skills.forEach((skillId) => {
       if (candidateSkillIds.includes(skillId)) {

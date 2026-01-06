@@ -120,6 +120,24 @@ export interface RecentActivity {
   timestamp: string
 }
 
+// Types for Supabase query results with relations
+interface AssignmentWithRelations {
+  id: string
+  title: string
+  status: string
+  created_at: string
+  candidate: { first_name: string; last_name: string } | null
+  organization: { name: string } | null
+}
+
+interface RequestWithRelations {
+  id: string
+  title: string
+  request_number: string
+  created_at: string
+  organization: { name: string } | null
+}
+
 export function useRecentActivity() {
   const supabase = createClient()
 
@@ -143,14 +161,13 @@ export function useRecentActivity() {
         .order('created_at', { ascending: false })
         .limit(3)
 
-      recentAssignments?.forEach(a => {
-        const candidate = a.candidate as any
-        const org = a.organization as any
+      const assignments = recentAssignments as AssignmentWithRelations[] | null
+      assignments?.forEach(a => {
         activities.push({
           id: `assignment-${a.id}`,
           type: 'assignment_started',
-          title: candidate ? `${candidate.first_name} ${candidate.last_name}` : 'Kandidat',
-          subtitle: org?.name ? `startet oppdrag hos ${org.name}` : 'startet oppdrag',
+          title: a.candidate ? `${a.candidate.first_name} ${a.candidate.last_name}` : 'Kandidat',
+          subtitle: a.organization?.name ? `startet oppdrag hos ${a.organization.name}` : 'startet oppdrag',
           timestamp: a.created_at,
         })
       })
@@ -168,13 +185,13 @@ export function useRecentActivity() {
         .order('created_at', { ascending: false })
         .limit(3)
 
-      recentRequests?.forEach(r => {
-        const org = r.organization as any
+      const requests = recentRequests as RequestWithRelations[] | null
+      requests?.forEach(r => {
         activities.push({
           id: `request-${r.id}`,
           type: 'request_created',
           title: 'Ny request',
-          subtitle: org?.name ? `fra ${org.name}` : r.title,
+          subtitle: r.organization?.name ? `fra ${r.organization.name}` : r.title,
           timestamp: r.created_at,
         })
       })

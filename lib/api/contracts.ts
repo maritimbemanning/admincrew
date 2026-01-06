@@ -1,12 +1,134 @@
 /**
  * Contracts API Helper
- * 
+ *
  * Server-side API functions for contract operations.
  */
 
 import { createClient } from '@/lib/supabase/server'
+import type {
+  ContractStatus,
+  ContractType,
+  Candidate,
+  Organization
+} from '@/types/database.types'
 
-// Contracts
+// ═══════════════════════════════════════════════════════
+// CONTRACT TYPES
+// ═══════════════════════════════════════════════════════
+
+export interface Contract {
+  id: string
+  contract_number: string
+  assignment_id: string | null
+  organization_id: string | null
+  candidate_id: string | null
+  type: ContractType
+  title: string
+  content_html: string | null
+  template_id: string | null
+  variables: Record<string, unknown> | null
+  draft_pdf_path: string | null
+  signed_pdf_path: string | null
+  esign_provider: string | null
+  esign_request_id: string | null
+  esign_status: string
+  status: ContractStatus
+  signed_at: string | null
+  sent_at: string | null
+  cancelled_at: string | null
+  cancellation_reason: string | null
+  created_at: string
+  created_by: string | null
+  updated_at: string
+}
+
+export interface ContractParty {
+  id: string
+  contract_id: string
+  party_type: string
+  name: string
+  email: string
+  national_id: string | null
+  signing_order: number
+  status: string
+  signed_at: string | null
+  signature_method: string | null
+  signature_data: Record<string, unknown> | null
+  user_id: string | null
+}
+
+export interface CreateContractInput {
+  assignment_id?: string | null
+  organization_id?: string | null
+  candidate_id?: string | null
+  type: ContractType
+  title: string
+  content_html?: string | null
+  template_id?: string | null
+  variables?: Record<string, unknown> | null
+  status?: ContractStatus
+}
+
+export type UpdateContractInput = Partial<CreateContractInput> & {
+  signed_at?: string | null
+  sent_at?: string | null
+  cancelled_at?: string | null
+  cancellation_reason?: string | null
+}
+
+export interface CreateContractPartyInput {
+  party_type: string
+  name: string
+  email: string
+  national_id?: string | null
+  signing_order?: number
+  user_id?: string | null
+}
+
+export type UpdateContractPartyInput = Partial<CreateContractPartyInput> & {
+  status?: string
+  signed_at?: string | null
+  signature_method?: string | null
+  signature_data?: Record<string, unknown> | null
+}
+
+export interface SignatureData {
+  method: string
+  timestamp: string
+  ip_address?: string
+  user_agent?: string
+  provider_reference?: string
+}
+
+export interface ContractFromTemplateInput {
+  type?: ContractType
+  title: string
+  content?: string
+  parties?: CreateContractPartyInput[]
+}
+
+export interface ContractWithRelations extends Contract {
+  contract_parties?: ContractParty[]
+  assignments?: {
+    id: string
+    candidates?: Pick<Candidate, 'id' | 'first_name' | 'last_name'> | null
+    requests?: {
+      id: string
+      title: string
+      crm_organizations?: Pick<Organization, 'id' | 'name'> | null
+    } | null
+  } | null
+}
+
+export interface ContractStats {
+  total: number
+  byStatus: Record<string, number>
+  byType: Record<string, number>
+}
+
+// ═══════════════════════════════════════════════════════
+// FILTER TYPES
+// ═══════════════════════════════════════════════════════
 
 export interface ContractFilters {
   search?: string
@@ -81,7 +203,7 @@ export async function getContract(id: string) {
   return data
 }
 
-export async function createContract(input: any) {
+export async function createContract(input: CreateContractInput): Promise<Contract> {
   const supabase = await createClient()
 
   // Generate reference number
@@ -90,20 +212,20 @@ export async function createContract(input: any) {
     .select('id', { count: 'exact', head: true })
 
   const count = countData || 0
-  const referenceNumber = `CTR-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`
+  const contractNumber = `CTR-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`
 
   const { data, error } = await supabase
     .from('contracts')
-    .insert({ ...input, reference_number: referenceNumber })
+    .insert({ ...input, contract_number: contractNumber })
     .select()
     .single()
 
   if (error) throw error
 
-  return data
+  return data as Contract
 }
 
-export async function updateContract(id: string, input: any) {
+export async function updateContract(id: string, input: UpdateContractInput): Promise<Contract> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -115,7 +237,7 @@ export async function updateContract(id: string, input: any) {
 
   if (error) throw error
 
-  return data
+  return data as Contract
 }
 
 export async function deleteContract(id: string) {
@@ -131,7 +253,7 @@ export async function deleteContract(id: string) {
 
 // Contract parties
 
-export async function addContractParty(contractId: string, party: any) {
+export async function addContractParty(contractId: string, party: CreateContractPartyInput): Promise<ContractParty> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -145,10 +267,10 @@ export async function addContractParty(contractId: string, party: any) {
 
   if (error) throw error
 
-  return data
+  return data as ContractParty
 }
 
-export async function updateContractParty(id: string, input: any) {
+export async function updateContractParty(id: string, input: UpdateContractPartyInput): Promise<ContractParty> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -160,7 +282,7 @@ export async function updateContractParty(id: string, input: any) {
 
   if (error) throw error
 
-  return data
+  return data as ContractParty
 }
 
 export async function removeContractParty(id: string) {
@@ -176,7 +298,7 @@ export async function removeContractParty(id: string) {
 
 // Signature operations
 
-export async function recordSignature(partyId: string, signatureData: any) {
+export async function recordSignature(partyId: string, signatureData: SignatureData): Promise<ContractParty> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -191,29 +313,37 @@ export async function recordSignature(partyId: string, signatureData: any) {
 
   if (error) throw error
 
+  const partyData = data as ContractParty
+
   // Check if all parties have signed
+  interface ContractWithParties {
+    id: string
+    contract_parties: Array<{ signed_at: string | null }>
+  }
+
   const { data: contract } = await supabase
     .from('contracts')
     .select('id, contract_parties(signed_at)')
-    .eq('id', data.contract_id)
+    .eq('id', partyData.contract_id)
     .single()
 
   if (contract) {
-    const allSigned = contract.contract_parties.every((p: any) => p.signed_at)
+    const contractData = contract as ContractWithParties
+    const allSigned = contractData.contract_parties.every((p) => p.signed_at)
     if (allSigned) {
-      await updateContract(contract.id, { 
+      await updateContract(contractData.id, {
         status: 'signed',
         signed_at: new Date().toISOString(),
       })
     } else {
-      const signedCount = contract.contract_parties.filter((p: any) => p.signed_at).length
+      const signedCount = contractData.contract_parties.filter((p) => p.signed_at).length
       if (signedCount > 0) {
-        await updateContract(contract.id, { status: 'partially_signed' })
+        await updateContract(contractData.id, { status: 'partially_signed' })
       }
     }
   }
 
-  return data
+  return partyData
 }
 
 // Contract status updates
@@ -238,17 +368,16 @@ export async function cancelContract(id: string, reason?: string) {
 export async function createContractFromTemplate(
   templateId: string,
   assignmentId: string,
-  data: any
-) {
+  data: ContractFromTemplateInput
+): Promise<Contract> {
   // In real implementation, would use lib/contracts/generator
   const contract = await createContract({
     template_id: templateId,
     assignment_id: assignmentId,
-    type: data.type || 'assignment',
+    type: data.type || 'employment_temporary',
     title: data.title,
-    content: data.content,
+    content_html: data.content,
     status: 'draft',
-    ...data,
   })
 
   // Add parties if provided
@@ -263,7 +392,7 @@ export async function createContractFromTemplate(
 
 // Dashboard stats
 
-export async function getContractStats() {
+export async function getContractStats(): Promise<ContractStats> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -272,18 +401,25 @@ export async function getContractStats() {
 
   if (error) throw error
 
-  const byStatus = data.reduce((acc: any, c: any) => {
+  interface ContractStatusRow {
+    status: string
+    type: string
+  }
+
+  const contractData = data as ContractStatusRow[]
+
+  const byStatus = contractData.reduce<Record<string, number>>((acc, c) => {
     acc[c.status] = (acc[c.status] || 0) + 1
     return acc
   }, {})
 
-  const byType = data.reduce((acc: any, c: any) => {
+  const byType = contractData.reduce<Record<string, number>>((acc, c) => {
     acc[c.type] = (acc[c.type] || 0) + 1
     return acc
   }, {})
 
   return {
-    total: data.length,
+    total: contractData.length,
     byStatus,
     byType,
   }
