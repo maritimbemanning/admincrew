@@ -36,7 +36,6 @@ import {
   Mail,
   Building2,
   Users,
-  MapPin,
   Calendar,
   Loader2
 } from 'lucide-react'
@@ -90,14 +89,14 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
         return false
       }
 
-      // Search filter
+      // Search filter - use correct InboxLead field names
       if (search) {
         const searchLower = search.toLowerCase()
         return (
-          need.company.toLowerCase().includes(searchLower) ||
-          need.contact.toLowerCase().includes(searchLower) ||
-          need.email.toLowerCase().includes(searchLower) ||
-          (need.need_type && need.need_type.toLowerCase().includes(searchLower))
+          (need.bedrift && need.bedrift.toLowerCase().includes(searchLower)) ||
+          need.kontakt_navn.toLowerCase().includes(searchLower) ||
+          need.kontakt_epost.toLowerCase().includes(searchLower) ||
+          (need.stillinger && need.stillinger.toLowerCase().includes(searchLower))
         )
       }
 
@@ -190,7 +189,7 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
                     <h4 className="font-medium truncate">
-                      {need.company}
+                      {need.bedrift || 'Ukjent firma'}
                     </h4>
                     <Badge
                       variant="secondary"
@@ -198,49 +197,43 @@ export function StaffingNeedList({ onViewDetails }: StaffingNeedListProps) {
                     >
                       {STATUS_LABELS[need.status] || need.status}
                     </Badge>
-                    {need.need_type && (
+                    {need.stillinger && (
                       <Badge variant="outline">
-                        {need.need_type}
+                        {need.stillinger}
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Building2 className="h-3 w-3" />
-                      {need.contact}
+                      {need.kontakt_navn}
                     </span>
                     <span className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
-                      {need.email}
+                      {need.kontakt_epost}
                     </span>
-                    {need.phone && (
+                    {need.kontakt_telefon && (
                       <span className="flex items-center gap-1">
                         <Phone className="h-3 w-3" />
-                        {need.phone}
+                        {need.kontakt_telefon}
                       </span>
                     )}
-                    {need.num_people && (
+                    {need.antall && (
                       <span className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        {need.num_people} stk
+                        {need.antall} stk
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    {need.need_duration && (
-                      <span>Varighet: {need.need_duration}</span>
-                    )}
-                    {need.work_location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {need.work_location}
-                      </span>
+                    {need.fartoytype && (
+                      <span>Fartøytype: {need.fartoytype}</span>
                     )}
                   </div>
-                  {need.start_date && (
+                  {need.oppstart && (
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      Oppstart: {format(new Date(need.start_date), 'd. MMM yyyy', { locale: nb })}
+                      Oppstart: {format(new Date(need.oppstart), 'd. MMM yyyy', { locale: nb })}
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">

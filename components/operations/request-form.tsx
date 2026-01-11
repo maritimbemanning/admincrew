@@ -92,7 +92,6 @@ export function RequestForm({
           experience_preferred_years: request.experience_preferred_years,
           languages_required: request.languages_required || [],
           languages_preferred: request.languages_preferred || [],
-          location_fylke: request.location_fylke,
           budget_min_daily_nok: request.budget_min_daily_nok,
           budget_max_daily_nok: request.budget_max_daily_nok,
           estimated_value_nok: request.estimated_value_nok,

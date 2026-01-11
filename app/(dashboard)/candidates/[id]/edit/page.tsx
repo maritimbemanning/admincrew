@@ -34,10 +34,6 @@ export default function EditCandidatePage({ params }: EditCandidatePageProps) {
     email: candidate.email,
     phone: candidate.phone || undefined,
 
-    // Location
-    fylke: candidate.fylke || undefined,
-    kommune: candidate.kommune || undefined,
-
     // Professional
     primary_role: candidate.primary_role,
     secondary_roles: candidate.secondary_roles || [],

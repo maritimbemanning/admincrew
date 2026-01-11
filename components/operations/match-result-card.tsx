@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, X, AlertTriangle, Star, MapPin, Clock } from 'lucide-react'
+import { Check, X, AlertTriangle, Star, Clock } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -86,14 +86,6 @@ export function MatchResultCard({
               </div>
             )}
 
-            {/* Location */}
-            {candidate.fylke && (
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>{candidate.fylke}</span>
-              </div>
-            )}
-
             {/* Availability */}
             <div className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
@@ -137,7 +129,6 @@ export function MatchResultCard({
               <ScoreBar label="Erfaring" score={scores.experience.score} />
               <ScoreBar label="Tilgjengelighet" score={scores.availability.score} />
               <ScoreBar label="Rating" score={scores.rating.score} />
-              <ScoreBar label="Lokasjon" score={scores.proximity.score} />
             </div>
           )}
 
@@ -247,7 +238,7 @@ export function MatchResultRow({
           )}
         </div>
         <p className="text-sm text-muted-foreground truncate">
-          {candidate.roles[0]} • {candidate.experience_years} år • {candidate.fylke || 'Ukjent'}
+          {candidate.roles[0]} • {candidate.experience_years} år
         </p>
       </div>
 

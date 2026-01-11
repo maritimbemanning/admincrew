@@ -29,7 +29,6 @@ export const requestFormSchema = z.object({
   experience_preferred_years: z.number().int().min(0).nullable(),
   languages_required: z.array(z.string()).default([]),
   languages_preferred: z.array(z.string()).default([]),
-  location_fylke: z.string().nullable(),
 
   // Budget
   budget_min_daily_nok: z.number().min(0).nullable(),
@@ -66,7 +65,6 @@ export const defaultRequestValues: RequestFormData = {
   experience_preferred_years: null,
   languages_required: [],
   languages_preferred: [],
-  location_fylke: null,
   budget_min_daily_nok: null,
   budget_max_daily_nok: null,
   estimated_value_nok: null,
@@ -204,10 +202,6 @@ export const matchingCriteriaSchema = z.object({
     preferred: z.array(z.string()).default([]),
   }).optional(),
 
-  location: z.object({
-    fylke: z.array(z.string()).default([]),
-  }).optional(),
-
   availability: z.object({
     status: z.array(z.string()).default(['available', 'available_soon']),
     available_by: z.string().optional(),
@@ -230,9 +224,6 @@ export const defaultMatchingCriteria: MatchingCriteriaData = {
   languages: {
     required: [],
     preferred: [],
-  },
-  location: {
-    fylke: [],
   },
   availability: {
     status: ['available', 'available_soon'],

@@ -180,7 +180,6 @@ export interface CustomerRequest {
   experience_preferred_years: number | null
   languages_required: string[]
   languages_preferred: string[]
-  location_fylke: string | null
 
   // Budget
   budget_min_daily_nok: number | null
@@ -356,10 +355,6 @@ export interface MatchingCriteria {
     preferred?: string[]
   }
 
-  location?: {
-    fylke?: string[]
-  }
-
   availability?: {
     status?: string[]
     available_by?: string
@@ -390,10 +385,6 @@ export interface MatchScoreBreakdown {
     score: number
     rating: number | null
   }
-  proximity: {
-    score: number
-    fylke: string | null
-  }
   languages: {
     score: number
     matched: string[]
@@ -422,7 +413,6 @@ export interface MatchResult {
     availability_date: string | null
     compliance_status: string
     internal_rating: number | null
-    fylke: string | null
     tags: string[]
   }
 }

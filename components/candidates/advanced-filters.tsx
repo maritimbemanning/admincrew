@@ -39,7 +39,6 @@ import {
   ROLE_DISPLAY_NAMES,
   SECTORS,
   SECTOR_DISPLAY_NAMES,
-  NORWEGIAN_FYLKER,
   AVAILABILITY_STATUSES,
   COMPLIANCE_STATUSES,
   LANGUAGES,
@@ -57,7 +56,6 @@ export interface CandidateFilterValues {
   compliance: string[]
   experienceMin: number
   experienceMax: number
-  fylke: string[]
   languages: string[]
   sectors: string[]
   ratingMin: number | null
@@ -72,7 +70,6 @@ const defaultFilters: CandidateFilterValues = {
   compliance: [],
   experienceMin: 0,
   experienceMax: 50,
-  fylke: [],
   languages: [],
   sectors: [],
   ratingMin: null,
@@ -152,7 +149,6 @@ export function AdvancedFilters({
     if (f.availability.length > 0) count++
     if (f.compliance.length > 0) count++
     if (f.experienceMin > 0 || f.experienceMax < 50) count++
-    if (f.fylke.length > 0) count++
     if (f.languages.length > 0) count++
     if (f.sectors.length > 0) count++
     if (f.ratingMin !== null) count++
@@ -186,13 +182,6 @@ export function AdvancedFilters({
       ? localFilters.compliance.filter((s) => s !== status)
       : [...localFilters.compliance, status]
     setLocalFilters({ ...localFilters, compliance: newCompl })
-  }
-
-  function handleFylkeToggle(fylke: string) {
-    const newFylker = localFilters.fylke.includes(fylke)
-      ? localFilters.fylke.filter((f) => f !== fylke)
-      : [...localFilters.fylke, fylke]
-    setLocalFilters({ ...localFilters, fylke: newFylker })
   }
 
   function handleLanguageToggle(lang: string) {
@@ -408,34 +397,6 @@ export function AdvancedFilters({
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Location */}
-              <AccordionItem value="location">
-                <AccordionTrigger className="text-sm font-medium">
-                  Lokasjon (Fylke)
-                  {localFilters.fylke.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {localFilters.fylke.length}
-                    </Badge>
-                  )}
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="grid grid-cols-2 gap-2">
-                    {NORWEGIAN_FYLKER.map((fylke) => (
-                      <div key={fylke} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`fylke-${fylke}`}
-                          checked={localFilters.fylke.includes(fylke)}
-                          onCheckedChange={() => handleFylkeToggle(fylke)}
-                        />
-                        <Label htmlFor={`fylke-${fylke}`} className="text-sm">
-                          {fylke}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
               {/* Languages */}
               <AccordionItem value="languages">
                 <AccordionTrigger className="text-sm font-medium">
@@ -574,7 +535,6 @@ export function ActiveFiltersDisplay({
     filters.compliance.length > 0 ||
     filters.experienceMin > 0 ||
     filters.experienceMax < 50 ||
-    filters.fylke.length > 0 ||
     filters.languages.length > 0 ||
     filters.sectors.length > 0 ||
     filters.ratingMin !== null ||
@@ -615,18 +575,6 @@ export function ActiveFiltersDisplay({
           {AVAILABILITY_DISPLAY[status]}
           <button
             onClick={() => onRemoveFilter('availability', status)}
-            className="ml-1 hover:text-destructive"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      ))}
-
-      {filters.fylke.map((f) => (
-        <Badge key={`fylke-${f}`} variant="secondary" className="gap-1">
-          {f}
-          <button
-            onClick={() => onRemoveFilter('fylke', f)}
             className="ml-1 hover:text-destructive"
           >
             <X className="h-3 w-3" />

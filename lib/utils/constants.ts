@@ -69,24 +69,6 @@ export const COMMON_CERTIFICATIONS = [
 ] as const
 
 // ═══════════════════════════════════════════════════════════════════
-// NORWEGIAN FYLKER (COUNTIES)
-// ═══════════════════════════════════════════════════════════════════
-
-export const NORWEGIAN_FYLKER = [
-  { value: 'agder', label: 'Agder' },
-  { value: 'innlandet', label: 'Innlandet' },
-  { value: 'more_og_romsdal', label: 'Møre og Romsdal' },
-  { value: 'nordland', label: 'Nordland' },
-  { value: 'oslo', label: 'Oslo' },
-  { value: 'rogaland', label: 'Rogaland' },
-  { value: 'troms_og_finnmark', label: 'Troms og Finnmark' },
-  { value: 'trondelag', label: 'Trøndelag' },
-  { value: 'vestfold_og_telemark', label: 'Vestfold og Telemark' },
-  { value: 'vestland', label: 'Vestland' },
-  { value: 'viken', label: 'Viken' },
-] as const
-
-// ═══════════════════════════════════════════════════════════════════
 // STATUS MAPPINGS
 // ═══════════════════════════════════════════════════════════════════
 

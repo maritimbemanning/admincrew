@@ -34,8 +34,6 @@ function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
     compliance_status: row.compliance_status || 'not_started',
     internal_rating: row.internal_rating || null,
     tags: row.tags || [],
-    fylke: row.fylke || null,
-    kommune: row.kommune || null,
     sectors: row.sectors || [],
     internal_notes: row.internal_notes || null,
     cv_summary: row.cv_summary || null,
@@ -75,10 +73,28 @@ async function fetchCandidate(id: string): Promise<CandidateWithRelations | null
     ?.map(pm => pm.candidate_pools)
     .filter(Boolean) || []
 
+  // Fetch certifications
+  const { data: certifications } = await supabase
+    .from('candidate_certifications')
+    .select('*')
+    .eq('candidate_id', id)
+    .eq('status', 'active')
+    .order('category', { ascending: true })
+
+  // Fetch documents
+  const { data: documents } = await supabase
+    .from('candidate_documents')
+    .select('*')
+    .eq('candidate_id', id)
+    .is('archived_at', null)
+    .order('uploaded_at', { ascending: false })
+
   const candidate = transformCandidate(data as unknown as CandidateDbRow)
   // Type assertion since we're fetching all pool fields
   candidate.pools = pools as unknown as import('@/types/database.types').CandidatePool[]
-  
+  candidate.certifications = certifications || []
+  candidate.documents = documents || []
+
   return candidate
 }
 
@@ -119,8 +135,6 @@ export function useCreateCandidate() {
         availability_notes: data.availability_notes,
         compliance_status: data.compliance_status,
         compliance_notes: data.compliance_notes,
-        fylke: data.fylke,
-        kommune: data.kommune,
         sectors: data.sectors,
         internal_notes: data.internal_notes,
         internal_rating: data.internal_rating,
@@ -186,8 +200,6 @@ export function useUpdateCandidate() {
       if (data.address_postal_code !== undefined) dbData.address_postal_code = data.address_postal_code
       if (data.address_city !== undefined) dbData.address_city = data.address_city
       if (data.address_country !== undefined) dbData.address_country = data.address_country
-      if (data.fylke !== undefined) dbData.fylke = data.fylke
-      if (data.kommune !== undefined) dbData.kommune = data.kommune
 
       // Professional info
       if (data.primary_role !== undefined) dbData.primary_role = data.primary_role
@@ -618,10 +630,6 @@ export function calculateProfileCompleteness(candidate: CandidateWithRelations):
 
   if (candidate.primary_role && candidate.primary_role !== 'deckhand') score += 10
   else missing.push('Stilling')
-
-  // Lokasjon (10 poeng)
-  if (candidate.fylke) score += 10
-  else missing.push('Fylke')
 
   // Ekstra (20 poeng)
   if (candidate.cv_summary) score += 10

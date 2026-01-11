@@ -1,22 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createHmac, timingSafeEqual } from 'crypto'
+
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
+
+/**
+ * Verify HMAC signature from webhook
+ */
+function verifySignature(payload: string, signature: string | null, timestamp: string | null): boolean {
+  if (!WEBHOOK_SECRET || !signature || !timestamp) {
+    return false
+  }
+
+  // Check timestamp is within 5 minutes (prevent replay attacks)
+  const timestampNum = parseInt(timestamp, 10)
+  const now = Math.floor(Date.now() / 1000)
+  if (Math.abs(now - timestampNum) > 300) {
+    console.error('[WEBHOOK] Timestamp too old or invalid')
+    return false
+  }
+
+  // Compute expected signature
+  const signedPayload = `${timestamp}.${payload}`
+  const expectedSignature = createHmac('sha256', WEBHOOK_SECRET)
+    .update(signedPayload)
+    .digest('hex')
+
+  // Timing-safe comparison
+  try {
+    return timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(`sha256=${expectedSignature}`)
+    )
+  } catch {
+    return false
+  }
+}
 
 /**
  * POST /api/webhooks/bluecrew
- * 
+ *
  * Webhook for å motta oppdateringer fra bluecrew.no
  * Brukes for kandidat-synkronisering via Supabase pg_net trigger
+ *
+ * Required headers:
+ * - x-webhook-signature: sha256=<hmac>
+ * - x-webhook-timestamp: unix timestamp
  */
 export async function POST(request: NextRequest) {
   try {
-    // Sjekk at request kommer fra forventet kilde
-    const source = request.headers.get('x-webhook-source')
+    const signature = request.headers.get('x-webhook-signature')
     const timestamp = request.headers.get('x-webhook-timestamp')
-    
-    console.log(`[WEBHOOK] Received from: ${source}, timestamp: ${timestamp}`)
+    const source = request.headers.get('x-webhook-source')
 
-    // Parse body
-    const payload = await request.json()
+    // Get raw body for signature verification
+    const rawBody = await request.text()
+
+    // Verify signature
+    if (!verifySignature(rawBody, signature, timestamp)) {
+      console.error('[WEBHOOK] Invalid signature or missing WEBHOOK_SECRET')
+      return NextResponse.json(
+        { error: 'Unauthorized - invalid signature' },
+        { status: 401 }
+      )
+    }
+
+    console.log(`[WEBHOOK] Verified request from: ${source}, timestamp: ${timestamp}`)
+
+    // Parse body (already read as text for signature verification)
+    const payload = JSON.parse(rawBody)
     const { event, data } = payload
 
     console.log(`[WEBHOOK] Event: ${event}`)

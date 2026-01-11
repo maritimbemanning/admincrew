@@ -322,9 +322,9 @@ export function CandidateList({
               complianceStatus: candidate.compliance_status,
               internalRating: candidate.internal_rating,
               tags: candidate.tags,
-              fylke: candidate.fylke,
+              sectors: candidate.sectors || [],
               certifications,
-              cvFilePath: candidate.cv_key || candidate._raw?.cv_key || null,
+              cvFilePath: candidate._raw?.cv_file_path || candidate._raw?.cv_key || null,
               pools: candidatePools,
             }}
             isSelected={selectedIds.has(candidate.id)}

@@ -6,7 +6,7 @@ import { X } from 'lucide-react'
 
 export interface ActiveFilter {
   id: string
-  type: 'role' | 'certification' | 'availability' | 'compliance' | 'fylke' | 'search' | 'status'
+  type: 'role' | 'certification' | 'availability' | 'compliance' | 'search' | 'status'
   value: string
   label: string
 }

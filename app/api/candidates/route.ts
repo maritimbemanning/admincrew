@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * GET /api/candidates
@@ -7,13 +7,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
 
-    // TODO: Re-enable auth when login is set up
-    // const { data: { user }, error: authError } = await supabase.auth.getUser()
-    // if (authError || !user) {
-    //   return NextResponse.json({ error: 'Ikke autentisert' }, { status: 401 })
-    // }
+    // Auth check - require authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Ikke autentisert' }, { status: 401 })
+    }
 
     const { searchParams } = new URL(request.url)
     
@@ -89,13 +89,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
 
-    // TODO: Re-enable auth
-    // const { data: { user }, error: authError } = await supabase.auth.getUser()
-    // if (authError || !user) {
-    //   return NextResponse.json({ error: 'Ikke autentisert' }, { status: 401 })
-    // }
+    // Auth check - require authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Ikke autentisert' }, { status: 401 })
+    }
 
     const body = await request.json()
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       .from('candidates')
       .insert({
         ...body,
-        // created_by: user.id,
+        created_by: user.id,
       })
       .select()
       .single()

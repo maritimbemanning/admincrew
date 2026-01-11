@@ -91,7 +91,6 @@ export function buildCriteriaFromRequest(request: {
   experience_preferred_years?: number | null
   languages_required?: string[]
   languages_preferred?: string[]
-  location_fylke?: string | null
 }): MatchingCriteria {
   return {
     role: request.role_needed,
@@ -107,9 +106,6 @@ export function buildCriteriaFromRequest(request: {
     languages: {
       required: request.languages_required || [],
       preferred: request.languages_preferred || [],
-    },
-    location: {
-      fylke: request.location_fylke ? [request.location_fylke] : [],
     },
   }
 }

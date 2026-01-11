@@ -17,9 +17,17 @@
       "Bash(curl:*)",
       "mcp__supabase__get_project_url",
       "mcp__supabase__search_docs",
-      "mcp__supabase__list_migrations"
+      "mcp__supabase__list_migrations",
+      "Bash(wc:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

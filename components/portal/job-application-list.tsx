@@ -94,14 +94,15 @@ export function JobApplicationList({ onViewDetails }: JobApplicationListProps) {
         return false
       }
 
-      // Search filter
+      // Search filter - use correct InboxCandidate field names
       if (search) {
         const searchLower = search.toLowerCase()
+        const displayName = app.name || `${app.first_name || ''} ${app.last_name || ''}`.trim()
         return (
-          app.name.toLowerCase().includes(searchLower) ||
+          displayName.toLowerCase().includes(searchLower) ||
           app.email.toLowerCase().includes(searchLower) ||
           (app.phone && app.phone.toLowerCase().includes(searchLower)) ||
-          (app.rolle && app.rolle.toLowerCase().includes(searchLower))
+          (app.primary_role && app.primary_role.toLowerCase().includes(searchLower))
         )
       }
 
@@ -109,11 +110,16 @@ export function JobApplicationList({ onViewDetails }: JobApplicationListProps) {
     })
   }, [applications, statusFilter, search])
 
+  // Helper to get display name from InboxCandidate fields
+  const getDisplayName = (app: InboxCandidate) => {
+    return app.name || `${app.first_name || ''} ${app.last_name || ''}`.trim() || 'Ukjent'
+  }
+
   const handleMarkReviewed = async (app: InboxCandidate) => {
     try {
       await markReviewed.mutateAsync(app.id)
       toast.success('Markert som vurdert', {
-        description: `${app.name} er markert som vurdert`,
+        description: `${getDisplayName(app)} er markert som vurdert`,
       })
     } catch {
       toast.error('Kunne ikke oppdatere', {
@@ -188,7 +194,7 @@ export function JobApplicationList({ onViewDetails }: JobApplicationListProps) {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <h4 className="font-medium truncate">{app.name}</h4>
+                    <h4 className="font-medium truncate">{getDisplayName(app)}</h4>
                     <Badge
                       variant="secondary"
                       className={cn(STATUS_COLORS[app.status] || STATUS_COLORS.pending)}
@@ -218,14 +224,11 @@ export function JobApplicationList({ onViewDetails }: JobApplicationListProps) {
                         {app.phone}
                       </span>
                     )}
-                    {app.rolle && (
-                      <span>{app.rolle}</span>
+                    {app.primary_role && (
+                      <span>{app.primary_role}</span>
                     )}
-                    {app.erfaring && (
-                      <span>{app.erfaring} års erfaring</span>
-                    )}
-                    {app.fylke && (
-                      <span>{app.fylke}</span>
+                    {app.experience_years && (
+                      <span>{app.experience_years} års erfaring</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">

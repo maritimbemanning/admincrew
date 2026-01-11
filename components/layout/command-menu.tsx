@@ -28,6 +28,8 @@ import {
   Sun,
   Laptop,
   History,
+  Megaphone,
+  Inbox,
 } from 'lucide-react'
 import { useUIStore, useCommandPaletteOpen, useRecentItems } from '@/stores/ui-store'
 import { useKeyboardShortcut, SHORTCUTS } from '@/hooks/use-keyboard-shortcut'
@@ -93,6 +95,20 @@ export function CommandMenu() {
           shortcut: 'G H',
           onSelect: () => navigate('/dashboard', 'Dashboard'),
           keywords: ['hjem', 'home', 'oversikt'],
+        },
+        {
+          id: 'nav-inbox',
+          label: 'Innboks',
+          icon: <Inbox className="mr-2 h-4 w-4" />,
+          onSelect: () => navigate('/inbox', 'Innboks'),
+          keywords: ['inbox', 'nye', 'søknader'],
+        },
+        {
+          id: 'nav-campaigns',
+          label: 'Kampanjer',
+          icon: <Megaphone className="mr-2 h-4 w-4" />,
+          onSelect: () => navigate('/campaigns', 'Kampanjer'),
+          keywords: ['kampanje', 'marketing', 'søknader', 'landing'],
         },
         {
           id: 'nav-candidates',

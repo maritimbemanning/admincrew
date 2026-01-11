@@ -43,6 +43,9 @@ export * from './use-inbox'
 // export * from './use-staffing-needs'    // Has duplicate useStaffingNeeds
 export * from './use-portal-contacts'
 
+// Campaign Applications (bluecrew.no kampanjesøknader)
+export * from './use-campaign-applications'
+
 // QMS
 export * from './use-qms-documents'
 export * from './use-qms-nc'

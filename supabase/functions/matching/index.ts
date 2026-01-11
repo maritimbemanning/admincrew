@@ -20,9 +20,6 @@ interface MatchingCriteria {
     min_years?: number
     preferred_years?: number
   }
-  location?: {
-    fylke?: string[]
-  }
   availability?: {
     status?: string[]
   }
@@ -38,7 +35,6 @@ interface MatchResult {
     experience: number
     availability: number
     rating: number
-    proximity: number
   }
   recommendation: 'strong' | 'good' | 'possible' | 'weak'
   blockers: Array<{ type: string; description: string }>
@@ -46,11 +42,10 @@ interface MatchResult {
 }
 
 const DEFAULT_WEIGHTS = {
-  certifications: 35,
-  experience: 25,
+  certifications: 40,
+  experience: 30,
   availability: 20,
   rating: 10,
-  proximity: 10,
 }
 
 serve(async (req) => {
@@ -110,11 +105,6 @@ serve(async (req) => {
       query = query.contains('certification_codes', criteria.certifications.required)
     }
 
-    // Location filter
-    if (criteria.location?.fylke?.length) {
-      query = query.in('fylke', criteria.location.fylke)
-    }
-
     // Pool filter
     if (criteria.include_pool_ids?.length) {
       query = query.overlaps('pool_ids', criteria.include_pool_ids)
@@ -162,7 +152,6 @@ serve(async (req) => {
           compliance_status: candidate.compliance_status,
           internal_rating: candidate.internal_rating,
           profile_image_url: candidate.profile_image_url,
-          fylke: candidate.fylke,
         },
       })
     }
@@ -219,7 +208,6 @@ function calculateScores(
     experience: scoreExperience(candidate, criteria),
     availability: scoreAvailability(candidate, criteria),
     rating: scoreRating(candidate),
-    proximity: scoreProximity(candidate, criteria),
   }
 }
 
@@ -283,12 +271,6 @@ function scoreRating(candidate: any): number {
   const rating = candidate.internal_rating
   if (!rating) return 50 // Neutral score for unrated
   return Math.round((rating / 5) * 100)
-}
-
-function scoreProximity(candidate: any, criteria: MatchingCriteria): number {
-  if (!criteria.location?.fylke?.length) return 100
-  if (!candidate.fylke) return 50
-  return criteria.location.fylke.includes(candidate.fylke) ? 100 : 30
 }
 
 function calculateTotalScore(
