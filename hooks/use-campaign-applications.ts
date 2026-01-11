@@ -7,6 +7,7 @@ import type {
   CampaignFilters,
   CampaignStats,
   CampaignStatus,
+  VisibleCampaignStatus,
 } from '@/types/campaign'
 import { getCvSignedUrl } from './use-inbox'
 
@@ -56,9 +57,14 @@ async function fetchCampaignApplications(
     `)
     .order('created_at', { ascending: false })
 
-  // Server-side filtering where possible
+  // IMPORTANT: Exclude 'ny' status by default - these are incomplete applications
+  // 'ny' = just filled form, NOT Vipps verified, NO CV uploaded
+  // Only show applications that are ready for review (pending+)
   if (filters.statuses && filters.statuses.length > 0) {
     query = query.in('status', filters.statuses)
+  } else {
+    // Default: exclude incomplete applications
+    query = query.neq('status', 'ny')
   }
 
   if (filters.positions && filters.positions.length > 0) {
@@ -157,9 +163,12 @@ async function fetchCampaignApplication(id: string): Promise<CampaignApplication
 async function fetchCampaignStats(): Promise<CampaignStats> {
   const supabase = createClient()
 
+  // IMPORTANT: Only count COMPLETE applications (exclude 'ny' status)
+  // 'ny' = incomplete, not Vipps verified, no CV
   const { data: applications, error } = await supabase
     .from('campaign_applications')
     .select('status, position, segment, candidate_id, created_at')
+    .neq('status', 'ny') // Exclude incomplete applications
 
   if (error) {
     console.error('[fetchCampaignStats] Error:', error)
@@ -173,7 +182,7 @@ async function fetchCampaignStats(): Promise<CampaignStats> {
   const stats: CampaignStats = {
     total: applications?.length || 0,
     byStatus: {
-      ny: 0,
+      // 'ny' removed - we don't show incomplete applications
       pending: 0,
       kontaktet: 0,
       intervju: 0,
@@ -202,9 +211,9 @@ async function fetchCampaignStats(): Promise<CampaignStats> {
   }
 
   applications?.forEach((app) => {
-    // Count by status
+    // Count by status (only visible/complete statuses)
     if (app.status in stats.byStatus) {
-      stats.byStatus[app.status as CampaignStatus]++
+      stats.byStatus[app.status as VisibleCampaignStatus]++
     }
 
     // Count by position
@@ -217,14 +226,14 @@ async function fetchCampaignStats(): Promise<CampaignStats> {
       stats.bySegment[app.segment as keyof typeof stats.bySegment]++
     }
 
-    // Count verified/unverified
+    // Count verified (has Bluecrew Profile linked)
     if (app.candidate_id) {
       stats.verified++
     } else {
       stats.unverified++
     }
 
-    // Count new applications
+    // Count new applications (completed this period)
     const createdAt = new Date(app.created_at)
     if (createdAt >= today) {
       stats.newToday++

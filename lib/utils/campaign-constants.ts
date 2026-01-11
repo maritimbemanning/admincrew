@@ -143,23 +143,25 @@ export interface StatusConfig {
 }
 
 export const CAMPAIGN_STATUSES: Record<CampaignStatus, StatusConfig> = {
+  // 'ny' is HIDDEN from UI - these are incomplete applications (no Vipps, no CV)
+  // We keep it in the type for DB compatibility but exclude from STATUS_OPTIONS
   ny: {
     value: 'ny',
+    label: 'Ufullstendig',
+    color: 'gray',
+    bgColor: 'bg-gray-100',
+    textColor: 'text-gray-500',
+    description: 'Ufullstendig søknad (ikke Vipps-verifisert)',
+    order: 0, // Will be excluded from options
+  },
+  pending: {
+    value: 'pending',
     label: 'Ny',
     color: 'blue',
     bgColor: 'bg-blue-100',
     textColor: 'text-blue-800',
-    description: 'Nettopp mottatt, ikke behandlet',
+    description: 'Komplett søknad, klar for vurdering',
     order: 1,
-  },
-  pending: {
-    value: 'pending',
-    label: 'Venter',
-    color: 'yellow',
-    bgColor: 'bg-yellow-100',
-    textColor: 'text-yellow-800',
-    description: 'Vipps-verifisert, venter på vurdering',
-    order: 2,
   },
   kontaktet: {
     value: 'kontaktet',
@@ -208,7 +210,10 @@ export const CAMPAIGN_STATUSES: Record<CampaignStatus, StatusConfig> = {
   },
 }
 
-export const STATUS_OPTIONS = Object.values(CAMPAIGN_STATUSES).sort((a, b) => a.order - b.order)
+// Exclude 'ny' (incomplete) from UI options - only show complete application statuses
+export const STATUS_OPTIONS = Object.values(CAMPAIGN_STATUSES)
+  .filter(s => s.value !== 'ny')
+  .sort((a, b) => a.order - b.order)
 
 // ══════════════════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
@@ -223,7 +228,7 @@ export function getSegmentConfig(segment: CampaignSegment): SegmentConfig {
 }
 
 export function getStatusConfig(status: CampaignStatus): StatusConfig {
-  return CAMPAIGN_STATUSES[status] || CAMPAIGN_STATUSES.ny
+  return CAMPAIGN_STATUSES[status] || CAMPAIGN_STATUSES.pending
 }
 
 export function getPositionLabel(position: CampaignPosition): string {

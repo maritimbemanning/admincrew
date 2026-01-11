@@ -56,15 +56,25 @@ export type CampaignSegment =
 
 /**
  * Campaign application status workflow
+ * 
+ * IMPORTANT: 'ny' = incomplete application (form submitted but NO Vipps, NO CV)
+ * These are NOT shown in AdminCrew - only complete applications are shown.
+ * 
+ * Workflow: User fills form → status='ny' → Vipps verification → CV upload → status='pending'
  */
 export type CampaignStatus = 
-  | 'ny'          // Nettopp mottatt, ikke behandlet
-  | 'pending'     // Vipps-verifisert, venter på vurdering
+  | 'ny'          // ⚠️ INCOMPLETE - just form, no Vipps, no CV (hidden from UI)
+  | 'pending'     // ✅ Complete - Vipps verified + CV uploaded, ready for review
   | 'kontaktet'   // Har tatt kontakt med kandidaten
   | 'intervju'    // Booket/gjennomført intervju
   | 'godkjent'    // Kvalifisert, klar for oppdrag
   | 'avvist'      // Ikke aktuell
   | 'arkivert'    // Gammel søknad, ikke lenger aktiv
+
+/**
+ * Visible statuses in AdminCrew UI (excludes 'ny' incomplete applications)
+ */
+export type VisibleCampaignStatus = Exclude<CampaignStatus, 'ny'>
 
 /**
  * Filter options for campaign applications
@@ -82,16 +92,17 @@ export interface CampaignFilters {
 
 /**
  * Stats summary for campaign applications
+ * Note: Only counts COMPLETE applications (excludes 'ny' status)
  */
 export interface CampaignStats {
   total: number
-  byStatus: Record<CampaignStatus, number>
+  byStatus: Record<VisibleCampaignStatus, number>
   byPosition: Record<CampaignPosition, number>
   bySegment: Record<CampaignSegment, number>
-  verified: number
-  unverified: number
-  newToday: number
-  newThisWeek: number
+  verified: number      // Has Bluecrew Profile linked (candidate_id)
+  unverified: number    // Missing Bluecrew Profile (shouldn't happen for complete apps)
+  newToday: number      // Complete applications from today
+  newThisWeek: number   // Complete applications from this week
 }
 
 /**

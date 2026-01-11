@@ -30,14 +30,15 @@ export default function CampaignsPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Only shows COMPLETE applications (Vipps + CV verified) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="Totalt søknader"
+          title="Komplette søknader"
           value={stats?.total || 0}
           icon={Megaphone}
           color="blue"
           loading={statsLoading}
+          subtitle="Vipps + CV verifisert"
         />
         <StatsCard
           title="Nye i dag"
@@ -48,20 +49,20 @@ export default function CampaignsPage() {
           subtitle="Siste 24 timer"
         />
         <StatsCard
-          title="Verifiserte"
+          title="Klar for vurdering"
+          value={stats?.byStatus.pending || 0}
+          icon={Clock}
+          color="orange"
+          loading={statsLoading}
+          subtitle="Nye komplette søknader"
+        />
+        <StatsCard
+          title="Med profil"
           value={stats?.verified || 0}
           icon={CheckCircle2}
           color="purple"
           loading={statsLoading}
-          subtitle={`${stats?.unverified || 0} uverifiserte`}
-        />
-        <StatsCard
-          title="Nye søknader"
-          value={stats?.byStatus.ny || 0}
-          icon={Clock}
-          color="orange"
-          loading={statsLoading}
-          subtitle="Venter på behandling"
+          subtitle="Koblet til Bluecrew-profil"
         />
       </div>
 
