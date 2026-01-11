@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { nb } from 'date-fns/locale'
 import { Card, CardContent } from '@/components/ui/card'
@@ -34,6 +34,9 @@ import {
   CheckCircle2,
   StickyNote,
   Loader2,
+  Briefcase,
+  Award,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -51,6 +54,49 @@ import {
   getCvSignedUrl,
 } from '@/hooks/use-campaign-applications'
 
+// ═══════════════════════════════════════════════════════
+// NOTES PARSING - Campaign form data from Bluecrew
+// ═══════════════════════════════════════════════════════
+
+interface CampaignNotes {
+  erfaring?: string           // "0-2", "3-5", "6-10", "10+"
+  offshoreErfaring?: string   // "ja", "noe", "nei"
+  rovRolle?: string           // ROV-specific
+  sertifikater?: string       // Certifications
+  fagomrade?: string          // Field/specialty
+  coverLetter?: string        // Application text
+  extra_document_url?: string
+  extra_document_filename?: string
+}
+
+function parseNotes(notes: string | null): CampaignNotes | null {
+  if (!notes) return null
+  
+  // If it's already an object (shouldn't happen but just in case)
+  if (typeof notes === 'object') return notes as CampaignNotes
+  
+  // Try to parse JSON
+  try {
+    return JSON.parse(notes) as CampaignNotes
+  } catch {
+    // If not valid JSON, return null (it's just plain text notes)
+    return null
+  }
+}
+
+const ERFARING_LABELS: Record<string, string> = {
+  '0-2': '0-2 år',
+  '3-5': '3-5 år',
+  '6-10': '6-10 år',
+  '10+': '10+ år',
+}
+
+const OFFSHORE_ERFARING_LABELS: Record<string, string> = {
+  'ja': 'Ja, offshore erfaring',
+  'noe': 'Noe erfaring',
+  'nei': 'Ingen offshore erfaring',
+}
+
 interface CampaignApplicationCardProps {
   application: CampaignApplication
   compact?: boolean
@@ -61,7 +107,7 @@ export function CampaignApplicationCard({
   compact = false,
 }: CampaignApplicationCardProps) {
   const [notesDialogOpen, setNotesDialogOpen] = useState(false)
-  const [notes, setNotes] = useState(app.notes || '')
+  const [internalNotes, setInternalNotes] = useState('')
   
   const updateStatus = useUpdateCampaignStatus()
   const updateNotes = useUpdateCampaignNotes()
@@ -69,6 +115,10 @@ export function CampaignApplicationCard({
   const positionConfig = getPositionConfig(app.position)
   const segmentConfig = getSegmentConfig(app.segment)
   const statusConfig = getStatusConfig(app.status)
+
+  // Parse notes JSON from campaign form
+  const parsedNotes = useMemo(() => parseNotes(app.notes), [app.notes])
+  const isJsonNotes = parsedNotes !== null
 
   const PositionIcon = positionConfig.icon
   const SegmentIcon = segmentConfig.icon
@@ -88,7 +138,7 @@ export function CampaignApplicationCard({
 
   const handleSaveNotes = async () => {
     try {
-      await updateNotes.mutateAsync({ id: app.id, notes })
+      await updateNotes.mutateAsync({ id: app.id, notes: internalNotes })
       toast.success('Notater lagret')
       setNotesDialogOpen(false)
     } catch (error) {
@@ -188,8 +238,54 @@ export function CampaignApplicationCard({
                 </div>
               )}
 
-              {/* Notes Preview */}
-              {!compact && app.notes && (
+              {/* Application Details from Notes */}
+              {!compact && parsedNotes && (
+                <div className="mt-3 space-y-2">
+                  {/* Experience & Offshore Experience */}
+                  <div className="flex items-center gap-3 flex-wrap text-sm">
+                    {parsedNotes.erfaring && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Briefcase className="h-3 w-3" />
+                        {ERFARING_LABELS[parsedNotes.erfaring] || parsedNotes.erfaring}
+                      </span>
+                    )}
+                    {parsedNotes.offshoreErfaring && (
+                      <Badge variant="outline" className="text-xs">
+                        {OFFSHORE_ERFARING_LABELS[parsedNotes.offshoreErfaring] || parsedNotes.offshoreErfaring}
+                      </Badge>
+                    )}
+                    {parsedNotes.sertifikater && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Award className="h-3 w-3" />
+                        {parsedNotes.sertifikater}
+                      </span>
+                    )}
+                    {parsedNotes.fagomrade && (
+                      <Badge variant="secondary" className="text-xs">
+                        {parsedNotes.fagomrade}
+                      </Badge>
+                    )}
+                    {parsedNotes.rovRolle && (
+                      <Badge variant="secondary" className="text-xs">
+                        ROV: {parsedNotes.rovRolle}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Cover Letter Preview */}
+                  {parsedNotes.coverLetter && (
+                    <div className="bg-muted/50 rounded-md p-2">
+                      <p className="text-sm text-muted-foreground line-clamp-2 flex items-start gap-1">
+                        <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span>{parsedNotes.coverLetter}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Plain text notes fallback (if not JSON) */}
+              {!compact && app.notes && !isJsonNotes && (
                 <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                   💬 {app.notes}
                 </p>
@@ -288,28 +384,89 @@ export function CampaignApplicationCard({
         </CardContent>
       </Card>
 
-      {/* Notes Dialog */}
+      {/* Application Details Dialog */}
       <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Interne notater</DialogTitle>
+            <DialogTitle>Søknadsdetaljer - {app.name}</DialogTitle>
             <DialogDescription>
-              Notater for {app.name} - kun synlig for ansatte
+              Informasjon fra kampanjeskjema
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Skriv notater her..."
-            rows={6}
-          />
+          
+          {/* Show parsed application data */}
+          {parsedNotes && (
+            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+              <h4 className="font-medium text-sm">Søknadsinformasjon</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {parsedNotes.erfaring && (
+                  <div>
+                    <span className="text-muted-foreground">Erfaring:</span>
+                    <span className="ml-2 font-medium">{ERFARING_LABELS[parsedNotes.erfaring] || parsedNotes.erfaring}</span>
+                  </div>
+                )}
+                {parsedNotes.offshoreErfaring && (
+                  <div>
+                    <span className="text-muted-foreground">Offshore:</span>
+                    <span className="ml-2 font-medium">{OFFSHORE_ERFARING_LABELS[parsedNotes.offshoreErfaring] || parsedNotes.offshoreErfaring}</span>
+                  </div>
+                )}
+                {parsedNotes.sertifikater && (
+                  <div>
+                    <span className="text-muted-foreground">Sertifikater:</span>
+                    <span className="ml-2 font-medium">{parsedNotes.sertifikater}</span>
+                  </div>
+                )}
+                {parsedNotes.fagomrade && (
+                  <div>
+                    <span className="text-muted-foreground">Fagområde:</span>
+                    <span className="ml-2 font-medium">{parsedNotes.fagomrade}</span>
+                  </div>
+                )}
+                {parsedNotes.rovRolle && (
+                  <div>
+                    <span className="text-muted-foreground">ROV Rolle:</span>
+                    <span className="ml-2 font-medium">{parsedNotes.rovRolle}</span>
+                  </div>
+                )}
+              </div>
+              
+              {parsedNotes.coverLetter && (
+                <div>
+                  <span className="text-muted-foreground text-sm">Søknadstekst:</span>
+                  <p className="mt-1 text-sm bg-background p-3 rounded border">
+                    {parsedNotes.coverLetter}
+                  </p>
+                </div>
+              )}
+
+              {parsedNotes.extra_document_url && (
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Ekstra dokument: {parsedNotes.extra_document_filename || 'Vedlegg'}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Internal notes section */}
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm">Interne notater</h4>
+            <Textarea
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              placeholder="Skriv interne notater her (kun synlig for ansatte)..."
+              rows={4}
+            />
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>
-              Avbryt
+              Lukk
             </Button>
             <Button onClick={handleSaveNotes} disabled={updateNotes.isPending}>
               {updateNotes.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Lagre
+              Lagre notater
             </Button>
           </DialogFooter>
         </DialogContent>
