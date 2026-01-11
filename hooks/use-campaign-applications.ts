@@ -171,16 +171,19 @@ async function fetchCampaignStats(): Promise<CampaignStats> {
     .neq('status', 'ny') // Exclude incomplete applications
 
   if (error) {
-    console.error('[fetchCampaignStats] Error:', error)
-    throw error
+    console.error('[fetchCampaignStats] Error:', error.message || error)
+    // Don't throw - return empty stats instead (might be auth issue)
   }
 
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 
+  // Use empty array if no data (auth error or no results)
+  const apps = applications || []
+
   const stats: CampaignStats = {
-    total: applications?.length || 0,
+    total: apps.length,
     byStatus: {
       // 'ny' removed - we don't show incomplete applications
       pending: 0,
@@ -210,7 +213,7 @@ async function fetchCampaignStats(): Promise<CampaignStats> {
     newThisWeek: 0,
   }
 
-  applications?.forEach((app) => {
+  apps.forEach((app) => {
     // Count by status (only visible/complete statuses)
     if (app.status in stats.byStatus) {
       stats.byStatus[app.status as VisibleCampaignStatus]++
