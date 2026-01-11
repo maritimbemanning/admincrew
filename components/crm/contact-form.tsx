@@ -45,7 +45,7 @@ import type {
   CrmContact,
   CrmContactStatus,
   CrmContactSource,
-  CrmPriorityLevel
+  CrmPriority
 } from '@/types/crm'
 import {
   CRM_CONTACT_STATUSES,

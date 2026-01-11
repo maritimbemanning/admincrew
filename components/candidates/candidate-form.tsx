@@ -166,11 +166,11 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
       }
 
       if (mode === 'create') {
-        const created = await createCandidate.mutateAsync(dbData)
+        const created = await createCandidate.mutateAsync(dbData as TablesInsert<'candidates'>)
         toast.success('Kandidat opprettet')
         router.push(`/candidates/${created.id}`)
       } else if (candidateId) {
-        await updateCandidate.mutateAsync({ id: candidateId, data: dbData })
+        await updateCandidate.mutateAsync({ id: candidateId, data: dbData as TablesInsert<'candidates'> })
         toast.success('Kandidat oppdatert')
         router.push(`/candidates/${candidateId}`)
       }
