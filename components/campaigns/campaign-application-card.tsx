@@ -37,6 +37,8 @@ import {
   Briefcase,
   Award,
   MessageSquare,
+  XCircle,
+  Archive,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -355,26 +357,91 @@ export function CampaignApplicationCard({
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-56">
+                  {/* View Profile */}
                   {app.candidate_id && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/candidates/${app.candidate_id}`}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Se kandidatprofil
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/candidates/${app.candidate_id}`}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Se kandidatprofil
+                      </Link>
+                    </DropdownMenuItem>
                   )}
+
+                  {/* Contact Actions */}
+                  <DropdownMenuItem 
+                    onClick={() => window.open(`mailto:${app.email}`, '_blank')}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send e-post
+                  </DropdownMenuItem>
+                  {app.phone && (
+                    <DropdownMenuItem 
+                      onClick={() => window.open(`tel:${app.phone}`, '_blank')}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Ring {app.phone}
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuSeparator />
+
+                  {/* Quick Status Changes */}
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Hurtighandlinger
+                  </DropdownMenuLabel>
+                  {app.status !== 'kontaktet' && (
+                    <DropdownMenuItem onClick={() => handleStatusChange('kontaktet')}>
+                      <Phone className="h-4 w-4 mr-2 text-purple-500" />
+                      Marker som kontaktet
+                    </DropdownMenuItem>
+                  )}
+                  {app.status !== 'intervju' && (
+                    <DropdownMenuItem onClick={() => handleStatusChange('intervju')}>
+                      <MessageSquare className="h-4 w-4 mr-2 text-orange-500" />
+                      Sett til intervju
+                    </DropdownMenuItem>
+                  )}
+                  {app.status !== 'godkjent' && (
+                    <DropdownMenuItem onClick={() => handleStatusChange('godkjent')}>
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                      Godkjenn kandidat
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuSeparator />
+
+                  {/* Documents */}
                   <DropdownMenuItem onClick={() => setNotesDialogOpen(true)}>
                     <StickyNote className="h-4 w-4 mr-2" />
-                    {app.notes ? 'Rediger notater' : 'Legg til notater'}
+                    Se detaljer / notater
                   </DropdownMenuItem>
                   {app.cv_url && (
                     <DropdownMenuItem onClick={handleDownloadCV}>
                       <Download className="h-4 w-4 mr-2" />
                       Last ned CV
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuSeparator />
+
+                  {/* Negative Actions */}
+                  {app.status !== 'avvist' && (
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('avvist')}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Avvis søknad
+                    </DropdownMenuItem>
+                  )}
+                  {app.status !== 'arkivert' && (
+                    <DropdownMenuItem 
+                      onClick={() => handleStatusChange('arkivert')}
+                      className="text-muted-foreground"
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      Arkiver
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
