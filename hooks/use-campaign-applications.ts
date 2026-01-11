@@ -379,17 +379,9 @@ export function useBulkUpdateCampaignStatus() {
 /**
  * Get signed URL for CV download
  * Reuses logic from use-inbox.ts since CVs are in same bucket
+ * Note: getCvSignedUrl is also exported from use-inbox, import from there if needed
  */
 export { getCvSignedUrl }
 
-export function useCvDownloadUrl(cvUrl: string | null) {
-  return useQuery({
-    queryKey: ['campaign-cv-url', cvUrl],
-    queryFn: async () => {
-      if (!cvUrl) return null
-      return getCvSignedUrl(cvUrl)
-    },
-    enabled: !!cvUrl,
-    staleTime: 1000 * 60 * 50, // Cache for 50 minutes
-  })
-}
+// Note: useCvDownloadUrl is already exported from use-inbox.ts
+// Don't re-export here to avoid conflicts
