@@ -53,7 +53,7 @@ export default function CampaignsPage() {
           icon={CheckCircle2}
           color="purple"
           loading={statsLoading}
-          subtitle={`${stats?.unverified || 0} uveri fiers te`}
+          subtitle={`${stats?.unverified || 0} uverifiserte`}
         />
         <StatsCard
           title="Nye søknader"
