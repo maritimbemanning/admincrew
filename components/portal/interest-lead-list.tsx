@@ -80,19 +80,20 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
     if (!leads) return []
 
     return leads.filter((lead) => {
-      // Status filter
-      if (statusFilter !== 'all' && lead.pipeline_status !== statusFilter) {
+      // Status filter - use pipeline_stage (InboxInterest = InboxCandidate)
+      if (statusFilter !== 'all' && lead.pipeline_stage !== statusFilter) {
         return false
       }
 
-      // Search filter
+      // Search filter - use correct field names from InboxCandidate
       if (search) {
         const searchLower = search.toLowerCase()
+        const displayName = lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
         return (
-          lead.name.toLowerCase().includes(searchLower) ||
+          displayName.toLowerCase().includes(searchLower) ||
           lead.email.toLowerCase().includes(searchLower) ||
           (lead.phone && lead.phone.toLowerCase().includes(searchLower)) ||
-          (lead.role && lead.role.toLowerCase().includes(searchLower))
+          (lead.primary_role && lead.primary_role.toLowerCase().includes(searchLower))
         )
       }
 
@@ -100,12 +101,17 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
     })
   }, [leads, statusFilter, search])
 
+  // Helper to get display name from InboxCandidate fields
+  const getDisplayName = (lead: InboxInterest) => {
+    return lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Ukjent'
+  }
+
   const handleConvert = async (lead: InboxInterest) => {
     try {
       const result = await convertToCandidate.mutateAsync(lead.id)
       if (result.isNew) {
         toast.success('Kandidat opprettet', {
-          description: `${lead.name} er lagt til som kandidat`,
+          description: `${getDisplayName(lead)} er lagt til som kandidat`,
         })
       } else {
         toast.info('Kandidat finnes allerede', {
@@ -185,17 +191,17 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <h4 className="font-medium truncate">{lead.name}</h4>
+                    <h4 className="font-medium truncate">{getDisplayName(lead)}</h4>
                     <Badge
                       variant="secondary"
-                      className={cn(STATUS_COLORS[lead.pipeline_status] || STATUS_COLORS.new)}
+                      className={cn(STATUS_COLORS[lead.pipeline_stage || 'new'] || STATUS_COLORS.new)}
                     >
-                      {STATUS_LABELS[lead.pipeline_status] || lead.pipeline_status}
+                      {STATUS_LABELS[lead.pipeline_stage || 'new'] || lead.pipeline_stage || 'Ny'}
                     </Badge>
-                    {lead.role && (
+                    {lead.primary_role && (
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Ship className="h-3 w-3" />
-                        {lead.role}
+                        {lead.primary_role}
                       </Badge>
                     )}
                   </div>
@@ -210,13 +216,13 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
                         {lead.phone}
                       </span>
                     )}
-                    {lead.experience && (
-                      <span>{lead.experience} års erfaring</span>
+                    {lead.experience_years && (
+                      <span>{lead.experience_years} års erfaring</span>
                     )}
                   </div>
-                  {lead.notes && (
+                  {lead.internal_notes && (
                     <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {lead.notes}
+                      {lead.internal_notes}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
@@ -227,7 +233,7 @@ export function InterestLeadList({ onViewDetails }: InterestLeadListProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {lead.pipeline_status !== 'converted' && (
+                  {lead.pipeline_stage !== 'converted' && lead.pipeline_stage !== 'konvertert' && (
                     <Button
                       size="sm"
                       variant="outline"

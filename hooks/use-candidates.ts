@@ -87,8 +87,6 @@ function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
     compliance_status: complianceStatus as CandidateWithRelations['compliance_status'],
     internal_rating: row.internal_rating || null,
     tags: row.tags || [],
-    fylke: row.fylke || null,
-    kommune: row.kommune || null,
     sectors: row.sectors || [],
     internal_notes: row.internal_notes || null,
     cv_summary: row.cv_summary || null,
@@ -171,11 +169,6 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     query = query.lte('experience_years', filters.experience.max)
   }
 
-  // Location filter - fylke exists in actual DB
-  if (filters?.location?.fylke && filters.location.fylke.length > 0) {
-    query = query.in('fylke', filters.location.fylke)
-  }
-
   // Rating filter - internal_rating may not exist in actual DB, skip if column doesn't exist
   // if (filters?.rating?.min !== undefined) {
   //   query = query.gte('internal_rating', filters.rating.min)
@@ -219,10 +212,67 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   const total = count || 0
   const totalPages = Math.ceil(total / pageSize)
 
+  // Get candidate IDs for loading relations
+  const candidateIds = (data || []).map(c => c.id)
+
+  // Fetch certifications for all candidates
+  type CertInfo = { id: string; code: string; name: string; expiry_date: string | null; is_permanent: boolean; issuer: string | null; document_verified: boolean }
+  let certificationsMap: Record<string, Array<CertInfo>> = {}
+  if (candidateIds.length > 0) {
+    const { data: certifications } = await supabase
+      .from('candidate_certifications')
+      .select('id, candidate_id, code, name, expiry_date, is_permanent, issuer, document_verified, status')
+      .in('candidate_id', candidateIds)
+      .eq('status', 'active')
+
+    // Group certifications by candidate_id
+    certificationsMap = (certifications || []).reduce((acc, cert) => {
+      if (!acc[cert.candidate_id]) {
+        acc[cert.candidate_id] = []
+      }
+      acc[cert.candidate_id].push({
+        id: cert.id,
+        code: cert.code,
+        name: cert.name,
+        expiry_date: cert.expiry_date,
+        is_permanent: cert.is_permanent ?? false,
+        issuer: cert.issuer ?? null,
+        document_verified: cert.document_verified ?? false,
+      })
+      return acc
+    }, {} as Record<string, Array<CertInfo>>)
+  }
+
+  // Fetch pool memberships with pool details
+  let poolsMap: Record<string, Array<{ id: string; name: string; color: string; slug: string }>> = {}
+  if (candidateIds.length > 0) {
+    const { data: poolMemberships } = await supabase
+      .from('candidate_pool_memberships')
+      .select('candidate_id, pool:candidate_pools(id, name, color, slug)')
+      .in('candidate_id', candidateIds)
+
+    // Group pools by candidate_id
+    poolsMap = (poolMemberships || []).reduce((acc, membership) => {
+      if (!acc[membership.candidate_id]) {
+        acc[membership.candidate_id] = []
+      }
+      // pool is a single object from the join
+      const pool = membership.pool as unknown as { id: string; name: string; color: string; slug: string } | null
+      if (pool) {
+        acc[membership.candidate_id].push(pool)
+      }
+      return acc
+    }, {} as Record<string, Array<{ id: string; name: string; color: string; slug: string }>>)
+  }
+
   // Transform to CandidateWithRelations using mapping functions
-  const candidates: CandidateWithRelations[] = (data || []).map(row =>
-    transformCandidate(row as unknown as CandidateDbRow)
-  )
+  const candidates: CandidateWithRelations[] = (data || []).map(row => {
+    const candidate = transformCandidate(row as unknown as CandidateDbRow)
+    // Attach certifications and pools
+    candidate.certifications = certificationsMap[row.id] || []
+    candidate.pools = poolsMap[row.id] || []
+    return candidate
+  })
 
   return { candidates, total, page, pageSize, totalPages }
 }

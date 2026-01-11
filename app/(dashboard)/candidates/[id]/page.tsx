@@ -3,7 +3,7 @@
 import { use, useState, useRef } from 'react'
 import Link from 'next/link'
 import { notFound, useRouter } from 'next/navigation'
-import { useCandidate, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
+import { useCandidate, useUpdateCandidateRating, useUpdateCandidateTags, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
 import { useUploadCandidateCv, calculateProfileCompleteness, useArchiveCandidate } from '@/hooks/use-candidate'
 import { getCvSignedUrl } from '@/hooks/use-inbox'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
@@ -26,7 +27,6 @@ import {
   Star,
   Phone,
   Mail,
-  MapPin,
   FileText,
   Briefcase,
   Clock,
@@ -44,6 +44,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { AvailabilityStatus, ComplianceStatus } from '@/types'
 import { format } from 'date-fns'
+import { nb } from 'date-fns/locale'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -286,12 +287,6 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   <Briefcase className="h-4 w-4" />
                   {candidate.experience_years} ars erfaring
                 </div>
-                {candidate.fylke && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" />
-                    {candidate.fylke}
-                  </div>
-                )}
                 <div className="flex items-center gap-1.5">
                   <Mail className="h-4 w-4" />
                   {candidate.email}
@@ -310,7 +305,7 @@ export default function CandidateProfilePage({ params }: PageProps) {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-6 items-start">
           {/* Left Column - Main Info */}
           <div className="col-span-2 space-y-6">
             <Tabs defaultValue="overview">
@@ -585,7 +580,6 @@ export default function CandidateProfilePage({ params }: PageProps) {
                       accept=".pdf,.doc,.docx"
                       onChange={handleCvUpload}
                       className="hidden"
-                      aria-label="Last opp CV"
                     />
                     <Button 
                       className="w-full justify-start" 
@@ -612,7 +606,6 @@ export default function CandidateProfilePage({ params }: PageProps) {
                       accept=".pdf,.doc,.docx"
                       onChange={handleCvUpload}
                       className="hidden"
-                      aria-label="Erstatt CV"
                     />
                     <Button 
                       className="w-full justify-start text-muted-foreground" 

@@ -42,7 +42,6 @@ import {
   ROLE_DISPLAY_NAMES,
   SECTORS,
   SECTOR_DISPLAY_NAMES,
-  NORWEGIAN_FYLKER,
   AVAILABILITY_STATUSES,
   COMPLIANCE_STATUSES,
   LANGUAGES,
@@ -142,8 +141,6 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
         date_of_birth: data.date_of_birth,
         nationality: data.nationality,
         // Location - map form fields to DB columns
-        fylke: data.fylke,
-        kommune: data.kommune,
         address_city: data.city,
         address_country: data.country,
         // Professional
@@ -369,45 +366,6 @@ export function CandidateForm({ mode, candidateId, initialData }: CandidateFormP
                         <FormLabel>Land</FormLabel>
                         <FormControl>
                           <Input placeholder="NO" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="fylke"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fylke</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Velg fylke" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {NORWEGIAN_FYLKER.map((fylke) => (
-                              <SelectItem key={fylke} value={fylke}>
-                                {fylke}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="kommune"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kommune</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Oslo" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

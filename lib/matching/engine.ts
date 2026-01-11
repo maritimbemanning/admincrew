@@ -27,11 +27,10 @@ const DEFAULT_OPTIONS: MatchingOptions = {
   limit: 50,
   includePartial: true,
   weights: {
-    certifications: 35,
-    experience: 25,
+    certifications: 40,
+    experience: 30,
     availability: 20,
     rating: 10,
-    proximity: 10,
   },
 }
 
@@ -84,11 +83,6 @@ export async function runMatching(
     query = query.gte('experience_years', criteria.experience.min_years)
   }
 
-  // Filter by location (if specified)
-  if (criteria.location?.fylke && criteria.location.fylke.length > 0) {
-    query = query.in('fylke', criteria.location.fylke)
-  }
-
   // Filter by pool membership (if specified)
   if (criteria.include_pool_ids && criteria.include_pool_ids.length > 0) {
     query = query.overlaps('pool_ids', criteria.include_pool_ids)
@@ -137,7 +131,6 @@ export async function runMatching(
     preferred_experience: criteria.experience?.preferred_years || 0,
     required_languages: criteria.languages?.required || [],
     preferred_languages: criteria.languages?.preferred || [],
-    target_fylke: criteria.location?.fylke || [],
     target_date: new Date(criteria.start_date),
     weights,
   }
@@ -161,7 +154,6 @@ export async function runMatching(
         experience: scores.experience,
         availability: scores.availability,
         rating: scores.rating,
-        proximity: scores.proximity,
         languages: scores.languages,
       },
       is_full_match: fullMatch,
@@ -179,7 +171,6 @@ export async function runMatching(
         availability_date: candidate.availability_date,
         compliance_status: candidate.compliance_status,
         internal_rating: candidate.internal_rating,
-        fylke: candidate.fylke,
         tags: candidate.tags,
       },
     }

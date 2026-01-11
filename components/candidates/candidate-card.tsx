@@ -56,7 +56,7 @@ interface CandidateCardProps {
     complianceStatus: string  // 'pending_bankid', 'pending_documents', 'verified', 'rejected'
     internalRating: number | null
     tags: string[]
-    fylke: string | null
+    sectors: string[]
     certifications: Certification[]
     cvFilePath?: string | null
     pools?: Pool[]
@@ -187,11 +187,11 @@ export function CandidateCard({ candidate, isSelected, onSelectChange }: Candida
 
         <div className="text-sm text-muted-foreground">
           {candidate.primaryRole || 'Ikke spesifisert'}
+          {candidate.secondaryRoles?.length > 0 && ` + ${candidate.secondaryRoles.length} roller`}
           {candidate.experienceYears > 0 && ` • ${candidate.experienceYears} år`}
-          {candidate.fylke && ` • ${candidate.fylke}`}
         </div>
 
-        {/* Certifications & Pools */}
+        {/* Certifications, Sectors, Tags & Pools */}
         <div className="flex items-center gap-1 mt-1.5 flex-wrap">
           {candidate.certifications.slice(0, 4).map((cert) => (
             <Badge key={cert.code} variant="secondary" className="text-xs">
@@ -210,11 +210,35 @@ export function CandidateCard({ candidate, isSelected, onSelectChange }: Candida
             </Badge>
           )}
 
+          {/* Sector badges */}
+          {candidate.sectors?.slice(0, 2).map((sector) => (
+            <Badge key={sector} variant="outline" className="text-xs text-blue-600 border-blue-200">
+              {sector}
+            </Badge>
+          ))}
+          {candidate.sectors && candidate.sectors.length > 2 && (
+            <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+              +{candidate.sectors.length - 2}
+            </Badge>
+          )}
+
+          {/* Tag badges */}
+          {candidate.tags?.slice(0, 2).map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+              {tag}
+            </Badge>
+          ))}
+          {candidate.tags && candidate.tags.length > 2 && (
+            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+              +{candidate.tags.length - 2}
+            </Badge>
+          )}
+
           {/* Pool badges */}
           {candidate.pools && candidate.pools.slice(0, 2).map((pool) => (
-            <Badge 
-              key={pool.id} 
-              variant="outline" 
+            <Badge
+              key={pool.id}
+              variant="outline"
               className="text-xs"
               style={{ borderColor: pool.color, color: pool.color }}
             >

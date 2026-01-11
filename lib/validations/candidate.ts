@@ -112,20 +112,6 @@ export const SECTOR_DISPLAY_NAMES: Record<string, string> = {
   maritime_services: 'Maritime tjenester',
 }
 
-export const NORWEGIAN_FYLKER = [
-  'Agder',
-  'Innlandet',
-  'Møre og Romsdal',
-  'Nordland',
-  'Oslo',
-  'Rogaland',
-  'Troms og Finnmark',
-  'Trøndelag',
-  'Vestfold og Telemark',
-  'Vestland',
-  'Viken',
-] as const
-
 export const LANGUAGES = [
   { code: 'no', name: 'Norsk' },
   { code: 'en', name: 'Engelsk' },
@@ -189,8 +175,6 @@ export const personalInfoSchema = z.object({
 
 // Address schema - matches actual DB columns
 export const addressSchema = z.object({
-  fylke: z.string().optional().nullable(),
-  kommune: z.string().optional().nullable(),
   city: z.string().optional().nullable(),  // actual DB column
   country: z.string().default('NO'),  // actual DB column
 })
@@ -261,8 +245,6 @@ export const defaultCandidateValues: Partial<CandidateFormData> = {
   date_of_birth: null,
   nationality: 'NO',
   // Address
-  fylke: null,
-  kommune: null,
   city: null,
   country: 'NO',
   // Professional

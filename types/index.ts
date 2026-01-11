@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════════════════════════════════════════════════
 
 export * from './database.types'
+export * from './campaign'
 
 // ═══════════════════════════════════════════════════════
 // RAW DATABASE CANDIDATE TYPE (admincrew Supabase schema)
@@ -25,8 +26,6 @@ export interface CandidateDbRow {
   phone_secondary: string | null
 
   // Location
-  fylke: string | null
-  kommune: string | null
   address_street: string | null
   address_postal_code: string | null
   address_city: string | null
@@ -130,8 +129,6 @@ export interface CandidateWithRelations {
   compliance_status: string  // 'pending_bankid', 'pending_documents', 'verified', 'rejected'
   internal_rating: number | null
   tags: string[]
-  fylke: string | null
-  kommune: string | null
   sectors: string[]
   internal_notes: string | null
   cv_summary: string | null
@@ -140,9 +137,19 @@ export interface CandidateWithRelations {
   pipeline_stage?: string | null  // 'ny', 'vurdert', etc.
   cv_key?: string | null
   // Optional relations (may not be loaded)
-  certifications?: import('./database.types').CandidateCertification[]
+  // Simplified certification info for card/detail display
+  certifications?: Array<{
+    id?: string
+    code: string
+    name: string
+    expiry_date: string | null
+    is_permanent?: boolean
+    issuer?: string | null
+    document_verified?: boolean
+  }>
   documents?: import('./database.types').CandidateDocument[]
-  pools?: import('./database.types').CandidatePool[]
+  // Simplified pool info for card display
+  pools?: Array<{ id: string; name: string; color: string; slug?: string }>
   // Raw DB row for access to all fields
   _raw?: CandidateDbRow
 }
@@ -160,9 +167,6 @@ export interface CandidateFilters {
   experience?: {
     min?: number
     max?: number
-  }
-  location?: {
-    fylke?: string[]
   }
   rating?: {
     min?: number
@@ -204,15 +208,11 @@ export interface MatchingCriteria {
     required?: string[]
     preferred?: string[]
   }
-  location?: {
-    fylke?: string[]
-  }
   weights?: {
     certifications?: number
     experience?: number
     availability?: number
     rating?: number
-    proximity?: number
   }
 }
 
@@ -225,7 +225,6 @@ export interface MatchResult {
     experience: { score: number; years: number }
     availability: { score: number; status: string }
     rating: { score: number; rating: number | null }
-    proximity: { score: number; fylke: string | null }
   }
   isFullMatch: boolean
   blockers: Array<{ type: string; description: string; severity: 'warning' | 'blocker' }>
@@ -259,10 +258,6 @@ export interface PoolFilterCriteria {
   experience?: {
     min?: number
     max?: number
-  }
-  location?: {
-    fylke?: string[]
-    kommune?: string[]
   }
   languages?: {
     required?: string[]

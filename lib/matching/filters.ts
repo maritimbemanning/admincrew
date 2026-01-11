@@ -43,12 +43,6 @@ export async function applyHardFilters(
     appliedFilters.push(`role:${criteria.role}`)
   }
 
-  // Filter by location (fylke)
-  if (criteria.location?.fylke && criteria.location.fylke.length > 0) {
-    query = query.in('fylke', criteria.location.fylke)
-    appliedFilters.push(`fylke:${criteria.location.fylke.join(',')}`)
-  }
-
   // Filter by minimum experience years
   if (criteria.experience?.min_years && criteria.experience.min_years > 0) {
     query = query.gte('experience_years', criteria.experience.min_years)

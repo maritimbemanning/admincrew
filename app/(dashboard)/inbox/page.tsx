@@ -132,8 +132,8 @@ export default function InboxPage() {
   // pipeline_stage = 'ny' means new candidates
   const newApps = applications?.filter(a => a.pipeline_stage === 'ny') || []
   const reviewedApps = applications?.filter(a => a.pipeline_stage !== 'ny') || []
-  // pipeline_status = 'new' means new interest leads
-  const newLeads = leads?.filter(l => l.pipeline_status === 'new') || []
+  // pipeline_stage = 'ny' means new interest leads (InboxInterest = InboxCandidate)
+  const newLeads = leads?.filter(l => l.pipeline_stage === 'ny') || []
 
   return (
     <div className="container py-6 space-y-6">
@@ -157,17 +157,10 @@ export default function InboxPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard
-          title="Nye søknader"
-          value={stats?.newApplications || 0}
+          title="Nye kandidater"
+          value={stats?.newCandidates || 0}
           icon={FileText}
           color="blue"
-          loading={statsLoading}
-        />
-        <StatsCard
-          title="Nye leads"
-          value={stats?.newLeads || 0}
-          icon={Users}
-          color="green"
           loading={statsLoading}
         />
         <StatsCard
@@ -534,16 +527,19 @@ function LeadCard({
 }) {
   const isConverted = lead.status === 'konvertert' || lead.status === 'converted'
 
+  // Build display name from available fields
+  const displayName = lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Ukjent'
+
   return (
     <Card>
       <CardContent className="pt-4">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-medium">{lead.navn}</h4>
-              {lead.type && (
+              <h4 className="font-medium">{displayName}</h4>
+              {lead.primary_role && (
                 <Badge variant="secondary" className="text-xs">
-                  {lead.type}
+                  {lead.primary_role}
                 </Badge>
               )}
               {isConverted && (
@@ -557,12 +553,12 @@ function LeadCard({
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Mail className="h-3 w-3" />
-                {lead.epost}
+                {lead.email}
               </span>
-              {lead.telefon && (
+              {lead.phone && (
                 <span className="flex items-center gap-1">
                   <Phone className="h-3 w-3" />
-                  {lead.telefon}
+                  {lead.phone}
                 </span>
               )}
               <span className="flex items-center gap-1">
@@ -571,9 +567,9 @@ function LeadCard({
               </span>
             </div>
 
-            {lead.melding && (
+            {lead.internal_notes && (
               <p className="text-sm mt-2 text-muted-foreground">
-                {lead.melding}
+                {lead.internal_notes}
               </p>
             )}
           </div>

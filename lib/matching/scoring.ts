@@ -8,7 +8,6 @@ import type {
   ExperienceScore,
   AvailabilityScore,
   RatingScore,
-  ProximityScore,
   LanguageScore,
   CandidateScores,
   MatchBlockerInfo,
@@ -186,39 +185,6 @@ export function scoreRating(candidate: CandidateSearchRecord): RatingScore {
 }
 
 /**
- * Score location proximity
- * - 100 if in target fylke
- * - Lower scores for other locations
- * - Could be expanded with distance calculations
- */
-export function scoreProximity(
-  candidate: CandidateSearchRecord,
-  context: ScoringContext
-): ProximityScore {
-  const fylke = candidate.fylke
-
-  // No location requirement = perfect score
-  if (context.target_fylke.length === 0) {
-    return { score: 100, fylke }
-  }
-
-  if (!fylke) {
-    return { score: 50, fylke: null } // Unknown location = neutral
-  }
-
-  const targetFylker = context.target_fylke.map(f => f.toLowerCase())
-  const candidateFylke = fylke.toLowerCase()
-
-  if (targetFylker.includes(candidateFylke)) {
-    return { score: 100, fylke }
-  }
-
-  // Not in target area - could add region-based scoring here
-  // For now, give partial score
-  return { score: 40, fylke }
-}
-
-/**
  * Score language match
  * - Similar logic to certifications
  */
@@ -273,7 +239,6 @@ export function calculateAllScores(
     experience: scoreExperience(candidate, context),
     availability: scoreAvailability(candidate, context),
     rating: scoreRating(candidate),
-    proximity: scoreProximity(candidate, context),
     languages: scoreLanguages(candidate, context),
   }
 }
@@ -283,21 +248,19 @@ export function calculateAllScores(
  */
 export function calculateTotalScore(
   scores: CandidateScores,
-  weights: { certifications: number; experience: number; availability: number; rating: number; proximity: number }
+  weights: { certifications: number; experience: number; availability: number; rating: number }
 ): number {
   const totalWeight =
     weights.certifications +
     weights.experience +
     weights.availability +
-    weights.rating +
-    weights.proximity
+    weights.rating
 
   const weightedSum =
     scores.certifications.score * weights.certifications +
     scores.experience.score * weights.experience +
     scores.availability.score * weights.availability +
-    scores.rating.score * weights.rating +
-    scores.proximity.score * weights.proximity
+    scores.rating.score * weights.rating
 
   return Math.round(weightedSum / totalWeight)
 }

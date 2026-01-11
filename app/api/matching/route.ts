@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
         criteria: {
           role: criteria.role,
           certifications_required: criteria.certifications?.required?.length || 0,
-          location: criteria.location?.fylke || null,
         },
         results_count: result.results.length,
         duration_ms: duration,

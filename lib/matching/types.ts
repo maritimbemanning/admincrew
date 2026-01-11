@@ -20,27 +20,23 @@ export interface CandidateSearchRecord {
   experience_years: number
   profile_completeness: number
   internal_rating: number | null
-  fylke: string | null
-  kommune: string | null
   tags: string[]
   pool_ids: string[]
   indexed_at: string
 }
 
 export interface MatchingWeights {
-  certifications: number  // Weight for certification match (default: 35)
-  experience: number      // Weight for experience match (default: 25)
+  certifications: number  // Weight for certification match (default: 40)
+  experience: number      // Weight for experience match (default: 30)
   availability: number    // Weight for availability match (default: 20)
   rating: number          // Weight for internal rating (default: 10)
-  proximity: number       // Weight for location proximity (default: 10)
 }
 
 export const DEFAULT_WEIGHTS: MatchingWeights = {
-  certifications: 35,
-  experience: 25,
+  certifications: 40,
+  experience: 30,
   availability: 20,
   rating: 10,
-  proximity: 10,
 }
 
 export interface ScoringContext {
@@ -50,7 +46,6 @@ export interface ScoringContext {
   preferred_experience: number
   required_languages: string[]
   preferred_languages: string[]
-  target_fylke: string[]
   target_date: Date
   weights: MatchingWeights
 }
@@ -79,11 +74,6 @@ export interface RatingScore {
   rating: number | null
 }
 
-export interface ProximityScore {
-  score: number
-  fylke: string | null
-}
-
 export interface LanguageScore {
   score: number
   matched: string[]
@@ -95,7 +85,6 @@ export interface CandidateScores {
   experience: ExperienceScore
   availability: AvailabilityScore
   rating: RatingScore
-  proximity: ProximityScore
   languages: LanguageScore
 }
 

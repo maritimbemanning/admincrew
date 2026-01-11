@@ -1,11 +1,10 @@
 // Matching Engine - Public API
 export { runMatching, quickMatch, getMatchStats } from './engine'
-export { 
+export {
   calculateAllScores,
   calculateTotalScore,
-  scoreCertifications, 
-  scoreExperience, 
-  scoreProximity as scoreLocation, 
+  scoreCertifications,
+  scoreExperience,
   scoreAvailability,
   scoreLanguages,
   scoreRating,
