@@ -180,17 +180,17 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="inset">
-      <SidebarHeader>
+      <SidebarHeader className="border-b border-sidebar-border pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <span className="font-bold text-lg">A</span>
+                <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-gold-500 text-navy-900 shadow-sm">
+                  <span className="font-medium text-lg">BC</span>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">AdminCrew</span>
-                  <span className="truncate text-xs text-muted-foreground">Operations Hub</span>
+                  <span className="truncate font-medium text-cream-50">AdminCrew</span>
+                  <span className="truncate text-xs text-gold-400">Operations Hub</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -201,12 +201,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="w-full justify-start gap-2 text-muted-foreground"
+              className="w-full justify-start gap-2 text-cream-100/70 hover:text-cream-50 hover:bg-navy-700/50 mt-2"
               onClick={() => setCommandPaletteOpen(true)}
             >
-              <Search className="h-4 w-4" />
-              <span>Søk...</span>
-              <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+              <Search className="h-4 w-4 text-gold-400" />
+              <span>Hurtigsøk...</span>
+              <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded-md border border-navy-700 bg-navy-800 px-1.5 font-mono text-[10px] font-medium text-cream-100/50">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </SidebarMenuButton>
@@ -279,21 +279,21 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border pt-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg">
-                  <Avatar className="h-8 w-8">
+                <SidebarMenuButton size="lg" className="hover:bg-navy-700/50">
+                  <Avatar className="h-8 w-8 border border-gold-500/30">
                     <AvatarImage src={user?.user_metadata?.avatar_url || ''} />
-                    <AvatarFallback>{userInitials || 'U'}</AvatarFallback>
+                    <AvatarFallback className="bg-gold-500 text-navy-900 font-medium text-sm">{userInitials || 'U'}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{userDisplayName}</span>
-                    <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
+                    <span className="truncate font-medium text-cream-50">{userDisplayName}</span>
+                    <span className="truncate text-xs text-cream-100/60">{userEmail}</span>
                   </div>
-                  <ChevronDown className="ml-auto h-4 w-4" />
+                  <ChevronDown className="ml-auto h-4 w-4 text-cream-100/50" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent

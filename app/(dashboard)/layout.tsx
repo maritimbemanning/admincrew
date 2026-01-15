@@ -44,27 +44,29 @@ export default function DashboardLayout({
       <KeyboardShortcutsProvider>
         <AppSidebar />
         <SidebarInset>
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border/50 bg-card/50 backdrop-blur-sm px-6">
+            <SidebarTrigger className="-ml-2 text-muted-foreground hover:text-foreground" />
+            <Separator orientation="vertical" className="mr-2 h-5 bg-border/50" />
             <div className="flex-1">
               <Button
                 variant="outline"
-                className="relative h-9 w-full max-w-sm justify-start text-sm text-muted-foreground sm:pr-12"
+                className="relative h-10 w-full max-w-md justify-start text-sm text-muted-foreground border-border/50 bg-background/50 hover:bg-background hover:border-gold-500/50 sm:pr-12"
                 onClick={() => setCommandPaletteOpen(true)}
               >
-                <Search className="mr-2 h-4 w-4" />
-                <span className="hidden lg:inline-flex">Søk eller skriv en kommando...</span>
+                <Search className="mr-2 h-4 w-4 text-gold-500" />
+                <span className="hidden lg:inline-flex">Søk kandidater, organisasjoner, oppdrag...</span>
                 <span className="inline-flex lg:hidden">Søk...</span>
-                <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <kbd className="pointer-events-none absolute right-2 top-2 hidden h-6 select-none items-center gap-1 rounded-md border border-border/50 bg-slate-100 dark:bg-navy-800 px-2 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </Button>
             </div>
             <ThemeToggle />
           </header>
-          <main className="flex-1 overflow-auto">
-            {children}
+          <main className="flex-1 overflow-auto bg-slate-50 dark:bg-navy-900">
+            <div className="container-premium py-8">
+              {children}
+            </div>
           </main>
         </SidebarInset>
         <CommandMenu />
