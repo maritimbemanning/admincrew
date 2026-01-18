@@ -289,20 +289,23 @@ export function CandidateList({
 
       {/* Candidate cards */}
       {data.candidates.map((candidate) => {
-        // Sertifikater hentes fra certifications-relasjonen når den er lastet
-        const certifications: Array<{ code: string; name: string; expiryDate: string }> = 
+        // Sertifikater fra certifications-relasjonen
+        const certifications: Array<{ code: string; name: string; expiryDate: string }> =
           candidate.certifications?.map(cert => ({
             code: cert.code || '',
             name: cert.name || cert.code || '',
             expiryDate: cert.expiry_date || ''
           })) || []
 
-        // Pools fra kandidatens _raw data
+        // Pools fra kandidatens data
         const candidatePools = candidate.pools?.map(p => ({
           id: p.id,
           name: p.name,
           color: p.color || '#888',
         })) || []
+
+        // Extract _raw fields from bluecrew_profiles
+        const raw = candidate._raw as Record<string, unknown> | undefined
 
         return (
           <CandidateCard
@@ -324,8 +327,15 @@ export function CandidateList({
               tags: candidate.tags,
               sectors: candidate.sectors || [],
               certifications,
-              cvFilePath: candidate._raw?.cv_file_path || candidate._raw?.cv_key || null,
+              cvFilePath: candidate.cv_key || raw?.cv_key as string || null,
               pools: candidatePools,
+              // Extended bluecrew_profile fields
+              shortId: raw?.short_id as string || null,
+              city: raw?.city as string || null,
+              country: raw?.country as string || null,
+              source: raw?.source as string || null,
+              verifiedAt: raw?.verified_at as string || null,
+              candidateId: raw?.candidate_id as string || null,
             }}
             isSelected={selectedIds.has(candidate.id)}
             onSelectChange={(checked) => handleSelectCandidate(candidate.id, checked)}
