@@ -335,13 +335,12 @@ export function useUpdateCandidateNotes() {
 }
 
 // ═══════════════════════════════════════════════════════
-// CERTIFICATION MUTATIONS
-// Note: candidate_certifications table may not exist in actual DB
-// These are placeholder implementations
+// CERTIFICATION CRUD
 // ═══════════════════════════════════════════════════════
 
 export function useAddCertification() {
   const queryClient = useQueryClient()
+  const supabase = createClient()
 
   return useMutation({
     mutationFn: async (certification: {
@@ -358,10 +357,29 @@ export function useAddCertification() {
       document_path?: string
       notes?: string
     }) => {
-      // Note: candidate_certifications table may not exist in actual DB
-      // For now, just return success without actually inserting
-      console.warn('candidate_certifications table may not exist in DB - certification not saved')
-      return certification
+      const { data, error } = await supabase
+        .from('candidate_certifications')
+        .insert({
+          candidate_id: certification.candidate_id,
+          category: certification.category,
+          code: certification.code,
+          name: certification.name,
+          issuer: certification.issuer || 'Sjøfartsdirektoratet',
+          issuer_country: certification.issuer_country || 'NO',
+          certificate_number: certification.certificate_number,
+          issue_date: certification.issue_date,
+          expiry_date: certification.expiry_date,
+          is_permanent: certification.is_permanent || false,
+          document_path: certification.document_path,
+          notes: certification.notes,
+          status: 'active',
+          document_verified: false,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: candidateKeys.detail(data.candidate_id) })
@@ -372,6 +390,7 @@ export function useAddCertification() {
 
 export function useUpdateCertification() {
   const queryClient = useQueryClient()
+  const supabase = createClient()
 
   return useMutation({
     mutationFn: async ({
@@ -383,7 +402,15 @@ export function useUpdateCertification() {
       candidateId: string
       data: Record<string, unknown>
     }) => {
-      console.warn('candidate_certifications table may not exist in DB')
+      const { error } = await supabase
+        .from('candidate_certifications')
+        .update({
+          ...data,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+
+      if (error) throw error
       return { id, candidateId }
     },
     onSuccess: (result) => {
@@ -394,6 +421,7 @@ export function useUpdateCertification() {
 
 export function useDeleteCertification() {
   const queryClient = useQueryClient()
+  const supabase = createClient()
 
   return useMutation({
     mutationFn: async ({
@@ -403,7 +431,12 @@ export function useDeleteCertification() {
       id: string
       candidateId: string
     }) => {
-      console.warn('candidate_certifications table may not exist in DB')
+      const { error } = await supabase
+        .from('candidate_certifications')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
       return { candidateId }
     },
     onSuccess: (result) => {
