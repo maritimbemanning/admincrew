@@ -76,9 +76,9 @@ async function fetchPools(options?: { includeArchived?: boolean }): Promise<Pool
     })
   }
 
-  // Also get total candidates count for "Alle" pool
+  // Also get total profiles count for "Alle" pool (from bluecrew_profiles)
   const { count: totalCandidates } = await supabase
-    .from('candidates')
+    .from('bluecrew_profiles')
     .select('*', { count: 'exact', head: true })
     .is('archived_at', null)
 

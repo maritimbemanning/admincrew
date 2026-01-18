@@ -42,56 +42,47 @@ export const candidateKeys = {
 // ═══════════════════════════════════════════════════════
 
 /**
- * Transform raw database row to normalized CandidateWithRelations
- * Maps actual DB columns to expected interface
+ * Transform bluecrew_profiles row to normalized CandidateWithRelations
  *
- * Actual DB columns (from migration 00003_candidates.sql):
- * - first_name, last_name (separate fields)
- * - primary_role
- * - experience_years
- * - availability_status
- * - compliance_status
- * - availability_date
+ * bluecrew_profiles is the source of truth for all candidate data.
+ * Profile is "confirmed" if cv_key is present.
  */
-function transformCandidate(row: CandidateDbRow): CandidateWithRelations {
-  // DB has separate first_name and last_name columns
-  const firstName = row.first_name || ''
-  const lastName = row.last_name || ''
+function transformProfile(row: Record<string, unknown>): CandidateWithRelations {
+  const firstName = (row.first_name as string) || ''
+  const lastName = (row.last_name as string) || ''
   const fullName = `${firstName} ${lastName}`.trim() || 'Ukjent'
 
-  // primary_role is the correct column name
-  const primaryRole = row.primary_role || 'Ikke spesifisert'
+  const primaryRole = (row.primary_role as string) || 'Ikke spesifisert'
+  const experienceYears = (row.experience_years as number) || 0
+  const availabilityStatus = (row.availability_status as string) || 'available'
 
-  // experience_years is the correct column name
-  const experienceYears = row.experience_years || 0
-
-  // availability_status is the correct column name
-  const availabilityStatus = row.availability_status || 'available'
-
-  // compliance_status is the correct column name
-  const complianceStatus = row.compliance_status || 'not_started'
+  // Profile is "confirmed" if cv_key is present
+  const cvKey = row.cv_key as string | null
+  const isConfirmed = !!cvKey
+  const complianceStatus = isConfirmed ? 'approved' : 'not_started'
 
   return {
-    id: row.id,
+    id: row.id as string,
     first_name: firstName,
     last_name: lastName,
     full_name: fullName,
-    email: row.email,
-    phone: row.phone || null,
-    avatar_url: row.avatar_url || null,
+    email: row.email as string,
+    phone: (row.phone as string) || null,
+    avatar_url: (row.avatar_url as string) || null,
     primary_role: primaryRole,
-    secondary_roles: row.secondary_roles || [],
+    secondary_roles: (row.secondary_roles as string[]) || [],
     experience_years: experienceYears,
     availability_status: availabilityStatus as CandidateWithRelations['availability_status'],
-    availability_date: row.availability_date || null,
+    availability_date: (row.availability_date as string) || null,
     compliance_status: complianceStatus as CandidateWithRelations['compliance_status'],
-    internal_rating: row.internal_rating || null,
-    tags: row.tags || [],
-    sectors: row.sectors || [],
-    internal_notes: row.internal_notes || null,
-    cv_summary: row.cv_summary || null,
-    // Store raw for access to all fields
-    _raw: row,
+    internal_rating: (row.internal_rating as number) || null,
+    tags: (row.tags as string[]) || [],
+    sectors: (row.sectors as string[]) || [],
+    internal_notes: (row.internal_notes as string) || null,
+    cv_summary: (row.cv_summary as string) || null,
+    cv_key: cvKey,
+    // Store raw for access to all fields including short_id, verified_at, etc.
+    _raw: row as unknown as CandidateDbRow,
   }
 }
 
@@ -103,13 +94,13 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   const supabase = createClient()
   const { filters, sort, page = 1, pageSize = 25, poolId } = options
 
-  // Start building query - select all columns, no joins
+  // Query bluecrew_profiles as source of truth
   let query = supabase
-    .from('candidates')
+    .from('bluecrew_profiles')
     .select('*', { count: 'exact' })
     .is('archived_at', null)
 
-  // Pool filter - join through pool_memberships
+  // Pool filter - join through candidate_id
   if (poolId && poolId !== 'alle') {
     const { data: membershipData } = await supabase
       .from('candidate_pool_memberships')
@@ -118,50 +109,55 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
 
     const candidateIds = membershipData?.map(m => m.candidate_id) || []
     if (candidateIds.length > 0) {
-      query = query.in('id', candidateIds)
+      // Filter bluecrew_profiles by their candidate_id link
+      query = query.in('candidate_id', candidateIds)
     } else {
       return { candidates: [], total: 0, page, pageSize, totalPages: 0 }
     }
   }
 
-  // Text search - use actual DB columns: first_name, last_name, email, primary_role
+  // Text search
   if (filters?.search) {
     const searchTerm = `%${filters.search}%`
-    query = query.or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},primary_role.ilike.${searchTerm}`)
+    query = query.or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},primary_role.ilike.${searchTerm},short_id.ilike.${searchTerm}`)
   }
 
-  // Role filter - search in primary_role (actual DB column)
+  // Role filter
   if (filters?.roles && filters.roles.length > 0) {
     query = query.in('primary_role', filters.roles)
   }
 
-  // Status filter - use status or pipeline_stage column
+  // Status filter - map to confirmed/unconfirmed based on cv_key
   if (filters?.status && filters.status.length > 0) {
-    // Check if filtering by pipeline_stage values or status values
-    const pipelineValues = filters.status.filter(s => ['ny', 'vurdert', 'kontaktet'].includes(s))
-    const statusValues = filters.status.filter(s => ['pending', 'godkjent', 'avslått', 'ansatt'].includes(s))
+    // 'godkjent' = has cv_key, 'pending' = no cv_key
+    const hasConfirmed = filters.status.includes('godkjent') || filters.status.includes('approved')
+    const hasPending = filters.status.includes('pending') || filters.status.includes('not_started')
 
-    if (pipelineValues.length > 0 && statusValues.length > 0) {
-      // Filter by both - OR condition
-      query = query.or(`pipeline_stage.in.(${pipelineValues.join(',')}),status.in.(${statusValues.join(',')})`)
-    } else if (pipelineValues.length > 0) {
-      query = query.in('pipeline_stage', pipelineValues)
-    } else if (statusValues.length > 0) {
-      query = query.in('status', statusValues)
+    if (hasConfirmed && !hasPending) {
+      query = query.not('cv_key', 'is', null)
+    } else if (hasPending && !hasConfirmed) {
+      query = query.is('cv_key', null)
     }
   }
 
-  // Availability filter - use availability_status column (actual DB column)
+  // Availability filter
   if (filters?.availability && filters.availability.length > 0) {
     query = query.in('availability_status', filters.availability)
   }
 
-  // Compliance filter - use compliance_status column (actual DB column)
+  // Compliance filter - map to cv_key presence
   if (filters?.compliance && filters.compliance.length > 0) {
-    query = query.in('compliance_status', filters.compliance)
+    const hasApproved = filters.compliance.includes('approved')
+    const hasPending = filters.compliance.some(c => ['not_started', 'documents_pending', 'review_pending'].includes(c))
+
+    if (hasApproved && !hasPending) {
+      query = query.not('cv_key', 'is', null)
+    } else if (hasPending && !hasApproved) {
+      query = query.is('cv_key', null)
+    }
   }
 
-  // Experience filter - use experience_years column (actual DB column)
+  // Experience filter
   if (filters?.experience?.min !== undefined) {
     query = query.gte('experience_years', filters.experience.min)
   }
@@ -169,17 +165,7 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     query = query.lte('experience_years', filters.experience.max)
   }
 
-  // Rating filter - internal_rating may not exist in actual DB, skip if column doesn't exist
-  // if (filters?.rating?.min !== undefined) {
-  //   query = query.gte('internal_rating', filters.rating.min)
-  // }
-
-  // Tags filter - tags column may not exist in actual DB
-  // if (filters?.tags && filters.tags.length > 0) {
-  //   query = query.overlaps('tags', filters.tags)
-  // }
-
-  // Sorting - map to actual DB columns
+  // Sorting
   const sortField = sort?.field || 'updated_at'
   const sortDirection = sort?.direction || 'desc'
 
@@ -205,17 +191,17 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   const { data, error, count } = await query
 
   if (error) {
-    console.error('Error fetching candidates:', error)
+    console.error('Error fetching bluecrew_profiles:', error)
     throw error
   }
 
   const total = count || 0
   const totalPages = Math.ceil(total / pageSize)
 
-  // Get candidate IDs for loading relations
-  const candidateIds = (data || []).map(c => c.id)
+  // Get candidate_ids for loading relations (certs, pools)
+  const candidateIds = (data || []).map(p => p.candidate_id).filter(Boolean) as string[]
 
-  // Fetch certifications for all candidates
+  // Fetch certifications via candidate_id link
   type CertInfo = { id: string; code: string; name: string; expiry_date: string | null; is_permanent: boolean; issuer: string | null; document_verified: boolean }
   let certificationsMap: Record<string, Array<CertInfo>> = {}
   if (candidateIds.length > 0) {
@@ -225,7 +211,6 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
       .in('candidate_id', candidateIds)
       .eq('status', 'active')
 
-    // Group certifications by candidate_id
     certificationsMap = (certifications || []).reduce((acc, cert) => {
       if (!acc[cert.candidate_id]) {
         acc[cert.candidate_id] = []
@@ -243,7 +228,7 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     }, {} as Record<string, Array<CertInfo>>)
   }
 
-  // Fetch pool memberships with pool details
+  // Fetch pool memberships via candidate_id link
   let poolsMap: Record<string, Array<{ id: string; name: string; color: string; slug: string }>> = {}
   if (candidateIds.length > 0) {
     const { data: poolMemberships } = await supabase
@@ -251,12 +236,10 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
       .select('candidate_id, pool:candidate_pools(id, name, color, slug)')
       .in('candidate_id', candidateIds)
 
-    // Group pools by candidate_id
     poolsMap = (poolMemberships || []).reduce((acc, membership) => {
       if (!acc[membership.candidate_id]) {
         acc[membership.candidate_id] = []
       }
-      // pool is a single object from the join
       const pool = membership.pool as unknown as { id: string; name: string; color: string; slug: string } | null
       if (pool) {
         acc[membership.candidate_id].push(pool)
@@ -265,12 +248,13 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
     }, {} as Record<string, Array<{ id: string; name: string; color: string; slug: string }>>)
   }
 
-  // Transform to CandidateWithRelations using mapping functions
+  // Transform to CandidateWithRelations
   const candidates: CandidateWithRelations[] = (data || []).map(row => {
-    const candidate = transformCandidate(row as unknown as CandidateDbRow)
-    // Attach certifications and pools
-    candidate.certifications = certificationsMap[row.id] || []
-    candidate.pools = poolsMap[row.id] || []
+    const candidate = transformProfile(row)
+    // Attach certifications and pools via candidate_id link
+    const candidateId = row.candidate_id as string
+    candidate.certifications = certificationsMap[candidateId] || []
+    candidate.pools = poolsMap[candidateId] || []
     return candidate
   })
 
@@ -293,28 +277,32 @@ export function useCandidates(options: UseCandidatesOptions = {}) {
 // MUTATIONS
 // ═══════════════════════════════════════════════════════
 
+/**
+ * Update availability status on bluecrew_profiles
+ * @param profileId - The bluecrew_profiles.id (NOT candidate_id)
+ */
 export function useUpdateCandidateAvailability() {
   const queryClient = useQueryClient()
   const supabase = createClient()
 
   return useMutation({
     mutationFn: async ({
-      candidateId,
+      profileId,
       status,
       date
     }: {
-      candidateId: string
+      profileId: string
       status: AvailabilityStatus
       date?: string
     }) => {
       const { data, error } = await supabase
-        .from('candidates')
+        .from('bluecrew_profiles')
         .update({
           availability_status: status,
           availability_date: date || null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', candidateId)
+        .eq('id', profileId)
         .select()
         .single()
 
@@ -327,6 +315,11 @@ export function useUpdateCandidateAvailability() {
   })
 }
 
+/**
+ * Add a candidate to a pool via candidate_pool_memberships
+ * @param candidateId - The bluecrew_profiles.candidate_id (relationship link, NOT profile.id)
+ * @param poolId - The candidate_pools.id
+ */
 export function useAddCandidateToPool() {
   const queryClient = useQueryClient()
   const supabase = createClient()
@@ -361,6 +354,11 @@ export function useAddCandidateToPool() {
   })
 }
 
+/**
+ * Remove a candidate from a pool
+ * @param candidateId - The bluecrew_profiles.candidate_id (relationship link, NOT profile.id)
+ * @param poolId - The candidate_pools.id
+ */
 export function useRemoveCandidateFromPool() {
   const queryClient = useQueryClient()
   const supabase = createClient()

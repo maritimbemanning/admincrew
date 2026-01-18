@@ -158,7 +158,7 @@ export default function CandidateProfilePage({ params }: PageProps) {
     }
 
     try {
-      await uploadCv.mutateAsync({ candidateId: candidate.id, file })
+      await uploadCv.mutateAsync({ profileId: candidate.id, file })
       toast.success('CV lastet opp!')
     } catch (err) {
       toast.error('Kunne ikke laste opp CV')
