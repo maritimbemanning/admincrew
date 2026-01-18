@@ -136,22 +136,23 @@ async function fetchCampaignApplication(id: string): Promise<CampaignApplication
     throw error
   }
 
-  // If candidate_id exists, fetch candidate data
+  // If candidate_id exists, fetch profile data from bluecrew_profiles
   if (data?.candidate_id) {
-    const { data: candidate } = await supabase
-      .from('candidates')
+    // candidate_id links to bluecrew_profiles.candidate_id
+    const { data: profile } = await supabase
+      .from('bluecrew_profiles')
       .select('first_name, last_name, primary_role, cv_key, phone')
-      .eq('id', data.candidate_id)
+      .eq('candidate_id', data.candidate_id)
       .single()
 
-    if (candidate) {
+    if (profile) {
       return {
         ...data,
         candidate: {
-          display_name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || null,
-          primary_role: candidate.primary_role,
-          cv_key: candidate.cv_key,
-          phone: candidate.phone,
+          display_name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null,
+          primary_role: profile.primary_role,
+          cv_key: profile.cv_key,
+          phone: profile.phone,
         },
       }
     }

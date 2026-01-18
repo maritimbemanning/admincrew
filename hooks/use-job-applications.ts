@@ -92,73 +92,78 @@ export function useUpdateJobApplicationStatus() {
   })
 }
 
+/**
+ * Convert a job application to a bluecrew_profile
+ *
+ * Creates or links to existing profile in bluecrew_profiles (source of truth).
+ * The application's candidate_id links to bluecrew_profiles.candidate_id for relationships.
+ */
 export function useConvertApplicationToCandidate() {
   const queryClient = useQueryClient()
   const supabase = createClient()
 
   return useMutation({
     mutationFn: async (application: JobApplication) => {
-      // 1. Sjekk om kandidat allerede finnes med denne e-posten
+      // 1. Check if profile already exists with this email
       const { data: existing } = await supabase
-        .from('candidates')
-        .select('id')
+        .from('bluecrew_profiles')
+        .select('id, candidate_id')
         .eq('email', application.email.toLowerCase())
         .single()
 
       if (existing) {
-        // Oppdater eksisterende kandidat med søknad-referanse
+        // Update application with profile's candidate_id link
         await supabase
           .from('job_applications')
-          .update({ 
-            candidate_id: existing.id, 
+          .update({
+            candidate_id: existing.candidate_id || existing.id,
             status: 'converted',
             updated_at: new Date().toISOString()
           })
           .eq('id', application.id)
 
-        return { candidateId: existing.id, created: false }
+        return { profileId: existing.id, candidateId: existing.candidate_id, created: false }
       }
 
-      // 2. Opprett ny kandidat
+      // 2. Create new profile in bluecrew_profiles
       const nameParts = application.name.trim().split(' ')
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
 
-      const { data: newCandidate, error: insertError } = await supabase
-        .from('candidates')
+      const { data: newProfile, error: insertError } = await supabase
+        .from('bluecrew_profiles')
         .insert({
           first_name: firstName,
           last_name: lastName,
           email: application.email.toLowerCase(),
           phone: application.phone || application.vipps_phone,
-          status: 'active',
           availability_status: 'available',
-          compliance_status: 'not_started',
+          cv_key: application.cv_key, // If cv_key is set, profile is "confirmed"
           source: 'job_application',
-          source_details: {
+          source_details: JSON.stringify({
             job_posting_id: application.job_posting_id,
             job_title: application.job_posting?.title,
             application_id: application.id,
             vipps_verified: application.vipps_verified,
-          },
-          cv_file_path: application.cv_key,
+          }),
         })
-        .select('id')
+        .select('id, candidate_id')
         .single()
 
       if (insertError) throw insertError
 
-      // 3. Oppdater søknaden med kandidat-ID
+      // 3. Update application with profile's candidate_id (or profile id if no candidate_id yet)
+      const linkId = newProfile.candidate_id || newProfile.id
       await supabase
         .from('job_applications')
-        .update({ 
-          candidate_id: newCandidate.id, 
+        .update({
+          candidate_id: linkId,
           status: 'converted',
           updated_at: new Date().toISOString()
         })
         .eq('id', application.id)
 
-      return { candidateId: newCandidate.id, created: true }
+      return { profileId: newProfile.id, candidateId: linkId, created: true }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job-applications'] })
