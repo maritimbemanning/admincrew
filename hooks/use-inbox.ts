@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 // TYPES - Matching actual database tables
 // ═══════════════════════════════════════════════════════
 
-// candidates table - ALL candidates from bluecrew.no (both interest forms and registrations)
+// bluecrew_profiles table - ALL candidates from bluecrew.no
 export interface InboxCandidate {
   id: string
   first_name: string | null
@@ -71,8 +71,8 @@ export const inboxKeys = {
 async function fetchNewCandidates(): Promise<InboxCandidate[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from('candidates')
+  const { data, error} = await supabase
+    .from('bluecrew_profiles')
     .select('id, first_name, last_name, name, email, phone, status, pipeline_stage, cv_key, primary_role, experience_years, internal_notes, source, created_at')
     .eq('pipeline_stage', 'ny')
     .order('created_at', { ascending: false })
@@ -112,7 +112,7 @@ async function fetchInboxStats(): Promise<InboxStats> {
   const supabase = createClient()
 
   const [candidates, leads] = await Promise.all([
-    supabase.from('candidates').select('id', { count: 'exact', head: true }).eq('pipeline_stage', 'ny'),
+    supabase.from('bluecrew_profiles').select('id', { count: 'exact', head: true }).eq('pipeline_stage', 'ny'),
     supabase.from('staffing_needs').select('id', { count: 'exact', head: true }).eq('status', 'new'),
   ])
 
@@ -210,7 +210,7 @@ export function useMarkCandidateReviewed() {
   return useMutation({
     mutationFn: async (candidateId: string) => {
       const { error } = await supabase
-        .from('candidates')
+        .from('bluecrew_profiles')
         .update({ pipeline_stage: 'vurdert' })
         .eq('id', candidateId)
 
@@ -259,7 +259,7 @@ export function useUpdateCandidateStatus() {
       if (pipeline_stage) updates.pipeline_stage = pipeline_stage
 
       const { error } = await supabase
-        .from('candidates')
+        .from('bluecrew_profiles')
         .update(updates)
         .eq('id', id)
 
@@ -295,7 +295,7 @@ export function useBulkMarkCandidatesReviewed() {
   return useMutation({
     mutationFn: async (candidateIds: string[]) => {
       const { error } = await supabase
-        .from('candidates')
+        .from('bluecrew_profiles')
         .update({ pipeline_stage: 'vurdert' })
         .in('id', candidateIds)
 
@@ -344,7 +344,7 @@ export function useUpdateJobApplicationStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
-        .from('candidates')
+        .from('bluecrew_profiles')
         .update({ status })
         .eq('id', id)
 

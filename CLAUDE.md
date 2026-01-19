@@ -46,9 +46,10 @@ app/
 
 ## Domain Rules
 1. **CRM = B2B customers only** (orgs buying services)
-2. **Candidates = "the product"** (maritime professionals)
-3. **Bluecrew.no is READ-ONLY** - never modify
-4. **Critical ops require manual approval**
+2. **bluecrew_profiles = SINGLE SOURCE OF TRUTH** for all candidate data (maritime professionals from bluecrew.no)
+3. **candidates table = workflow ID container** - links bluecrew_profiles to pools/certs/assignments via candidate_id FK
+4. **Bluecrew.no is READ-ONLY** - never modify
+5. **Critical ops require manual approval**
 
 ## Core Feature: 10-Second Matching
 Engine in `lib/matching/engine.ts`:
@@ -63,9 +64,10 @@ Engine in `lib/matching/engine.ts`:
 - Maritime roles follow Norwegian standards
 
 ## Key Tables
-- `candidates`, `candidate_search_index`, `candidate_pools`
-- `crm_organizations`, `crm_contacts`, `crm_deals`
-- `customer_requests`, `assignments`, `contracts`
+- **Candidates**: `bluecrew_profiles` (SoT), `candidates` (workflow IDs), `candidate_search_index`, `candidate_pools`
+- **CRM**: `crm_organizations`, `crm_contacts`, `crm_deals`
+- **Operations**: `customer_requests`, `assignments`, `contracts`
+- **Workflow**: `candidate_certifications`, `candidate_documents`, `candidate_pool_memberships` (all FK to candidates.id)
 
 ## Design Rules
 - Max 3 clicks for any action
