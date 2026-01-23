@@ -45,8 +45,8 @@ function formatDate(dateString: string | null): string {
 
 // Check if contact is stale (no activity in 30+ days)
 function isStale(contact: CrmContact): boolean {
-  if (!contact.last_contacted) return false
-  const lastContact = new Date(contact.last_contacted)
+  if (!contact.last_contact_at) return false
+  const lastContact = new Date(contact.last_contact_at)
   const now = new Date()
   const diffDays = Math.floor((now.getTime() - lastContact.getTime()) / (1000 * 60 * 60 * 24))
   return diffDays >= 30
