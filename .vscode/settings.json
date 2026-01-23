@@ -1,0 +1,17 @@
+{
+  "prisma.pinToPrisma6": false,
+  "mcp": {
+    "servers": {
+      "context7": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@upstash/context7-mcp",
+          "--api-key",
+          "ctx7sk-33f1700e-aab0-490e-8d23-8092004df34d"
+        ]
+      }
+    }
+  }
+}

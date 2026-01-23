@@ -1,0 +1,555 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   BLUECREW DESIGN SYSTEM
+   Maritime • Premium • Tillitsskapende
+   ============================================ */
+
+@theme inline {
+  /* Font */
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+
+  /* Semantic Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Bluecrew Brand Colors */
+  --color-navy-900: #1a2744;
+  --color-navy-800: #172a5c;
+  --color-navy-700: #1a3278;
+  --color-navy-600: #1e3a8a;
+  --color-gold-500: #a08563;
+  --color-gold-400: #bfa77d;
+  --color-gold-300: #d4c4a8;
+  --color-cream-50: #fdfcfa;
+  --color-cream-100: #faf6f0;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-600: #475569;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Radius - Premium feel */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
+}
+
+:root {
+  /* Base radius */
+  --radius: 0.5rem;
+
+  /* Light theme - Bluecrew branded */
+  --background: #fdfcfa;
+  --foreground: #1a2744;
+  --card: #ffffff;
+  --card-foreground: #1a2744;
+  --popover: #ffffff;
+  --popover-foreground: #1a2744;
+  --primary: #1a2744;
+  --primary-foreground: #fdfcfa;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1a2744;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #faf6f0;
+  --accent-foreground: #1a2744;
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #a08563;
+
+  /* Charts - Maritime palette */
+  --chart-1: #1a3278;
+  --chart-2: #a08563;
+  --chart-3: #10b981;
+  --chart-4: #1e3a8a;
+  --chart-5: #bfa77d;
+
+  /* Sidebar - Navy branded */
+  --sidebar: #1a2744;
+  --sidebar-foreground: #faf6f0;
+  --sidebar-primary: #a08563;
+  --sidebar-primary-foreground: #1a2744;
+  --sidebar-accent: #172a5c;
+  --sidebar-accent-foreground: #fdfcfa;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #a08563;
+}
+
+.dark {
+  --background: #1a2744;
+  --foreground: #fdfcfa;
+  --card: #172a5c;
+  --card-foreground: #fdfcfa;
+  --popover: #172a5c;
+  --popover-foreground: #fdfcfa;
+  --primary: #a08563;
+  --primary-foreground: #1a2744;
+  --secondary: #1a3278;
+  --secondary-foreground: #fdfcfa;
+  --muted: #1a3278;
+  --muted-foreground: #d4c4a8;
+  --accent: #172a5c;
+  --accent-foreground: #fdfcfa;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #bfa77d;
+
+  /* Charts - Dark mode */
+  --chart-1: #bfa77d;
+  --chart-2: #1e3a8a;
+  --chart-3: #10b981;
+  --chart-4: #a08563;
+  --chart-5: #1a3278;
+
+  /* Sidebar */
+  --sidebar: #172a5c;
+  --sidebar-foreground: #fdfcfa;
+  --sidebar-primary: #bfa77d;
+  --sidebar-primary-foreground: #1a2744;
+  --sidebar-accent: #1a3278;
+  --sidebar-accent-foreground: #fdfcfa;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #bfa77d;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Typography - Inter only, medium weight for headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+    color: var(--foreground);
+  }
+
+  h1 {
+    font-size: clamp(3rem, 6vw, 4.5rem);
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+    line-height: 1.15;
+  }
+
+  h3 {
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    line-height: 1.2;
+  }
+
+  h4 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  /* Body text */
+  p, span, div {
+    @apply text-base leading-relaxed;
+  }
+
+  small {
+    @apply text-sm;
+  }
+}
+
+/* ============================================
+   BLUECREW COMPONENT UTILITIES
+   ============================================ */
+
+@layer utilities {
+  /* Gold accent text - for single word highlights */
+  .text-accent-gold {
+    color: #bfa77d;
+    font-style: italic;
+  }
+
+  /* Navy hero sections */
+  .bg-navy-hero {
+    background: linear-gradient(135deg, #1a2744 0%, #172a5c 100%);
+  }
+
+  /* Section spacing - Greenhouse aligned */
+  .section-spacing {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  @media (min-width: 768px) {
+    .section-spacing {
+      padding-top: 8rem;
+      padding-bottom: 8rem;
+    }
+  }
+
+  /* Max width container */
+  .container-premium {
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container-premium {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container-premium {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  /* Grid gaps */
+  .grid-premium {
+    gap: 2rem;
+  }
+
+  @media (min-width: 768px) {
+    .grid-premium {
+      gap: 3rem;
+    }
+  }
+
+  /* Card premium styling */
+  .card-premium {
+    border-radius: 1rem;
+    padding: 2rem;
+    background: var(--card);
+    box-shadow:
+      0 1px 2px rgba(26, 39, 68, 0.04),
+      0 4px 8px rgba(26, 39, 68, 0.04),
+      0 8px 16px rgba(26, 39, 68, 0.02);
+  }
+
+  /* Subtle fade-up animation */
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  /* Stagger delays for lists */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+
+  /* Status colors */
+  .status-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+
+  .status-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+
+  .status-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  /* Gold CTA on dark backgrounds */
+  .btn-gold {
+    background: #a08563;
+    color: #1a2744;
+    transition: background-color 0.2s;
+  }
+
+  .btn-gold:hover {
+    background: #bfa77d;
+  }
+
+  /* Navy CTA on light backgrounds */
+  .btn-navy {
+    background: #1a2744;
+    color: #fdfcfa;
+    transition: background-color 0.2s;
+  }
+
+  .btn-navy:hover {
+    background: #172a5c;
+  }
+
+  /* Text hierarchy utilities */
+  .text-heading {
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  .text-body {
+    font-weight: 400;
+    color: var(--foreground);
+  }
+
+  .text-muted-premium {
+    font-weight: 400;
+    color: var(--muted-foreground);
+  }
+
+  /* Premium data list background */
+  .bg-data-list {
+    background: #f8fafc;
+  }
+
+  .dark .bg-data-list {
+    background: rgba(23, 42, 92, 0.5);
+  }
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR - Premium feel
+   ============================================ */
+
+@layer base {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d4c4a8;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #bfa77d;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: #1a3278;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #1e3a8a;
+  }
+}
+
+/* ============================================
+   FOCUS STATES - Accessible & on-brand
+   ============================================ */
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid #a08563;
+    outline-offset: 2px;
+  }
+
+  .dark :focus-visible {
+    outline-color: #bfa77d;
+  }
+}
+
+/* ============================================
+   SELECTION - On-brand highlight
+   ============================================ */
+
+@layer base {
+  ::selection {
+    background: #a08563;
+    color: #1a2744;
+  }
+
+  .dark ::selection {
+    background: #bfa77d;
+    color: #1a2744;
+  }
+}
+
+/* ============================================
+   COMMAND CENTER DESIGN SYSTEM
+   Tactical • High-Density • Mission-Critical
+   ============================================ */
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .glass-panel {
+    background: rgba(26, 39, 68, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .signal-light {
+    @apply relative inline-flex items-center justify-center rounded-full;
+  }
+
+  .signal-light::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    opacity: 0;
+    animation: signal-pulse 2s ease-in-out infinite;
+  }
+
+  .signal-light-green { @apply bg-emerald-500; }
+  .signal-light-green::after { background: #10b981; }
+  .signal-light-yellow { @apply bg-amber-500; }
+  .signal-light-yellow::after { background: #f59e0b; }
+  .signal-light-blue { @apply bg-blue-500; }
+  .signal-light-blue::after { background: #3b82f6; }
+  .signal-light-red { @apply bg-red-500; }
+  .signal-light-red::after { background: #ef4444; }
+  .signal-light-gray { @apply bg-slate-400; }
+  .signal-light-gray::after { background: #94a3b8; }
+
+  .card-tactical {
+    @apply transition-all duration-200;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .card-tactical:hover {
+    box-shadow: 0 0 0 1px rgba(160, 133, 99, 0.5), 0 4px 12px rgba(26, 39, 68, 0.15);
+  }
+
+  .metrics-footer {
+    background: rgba(26, 39, 68, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .text-tactical {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .text-coordinates {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .input-tactical {
+    @apply bg-transparent border-0 border-b-2 border-border rounded-none px-0 transition-colors;
+  }
+
+  .input-tactical:focus {
+    border-bottom-color: #a08563;
+    box-shadow: none;
+    outline: none;
+  }
+
+  .docking-stripes {
+    background: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(160, 133, 99, 0.1) 8px, rgba(160, 133, 99, 0.1) 16px);
+  }
+
+  .frost-effect {
+    filter: grayscale(0.3) brightness(0.9);
+    opacity: 0.65;
+  }
+
+  .landing-zone {
+    border: 2px dashed #a08563;
+    background: rgba(160, 133, 99, 0.08);
+  }
+
+  .match-score-bar {
+    @apply h-1.5 rounded-full overflow-hidden;
+    background: rgba(160, 133, 99, 0.2);
+  }
+
+  .match-score-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: linear-gradient(90deg, #a08563, #bfa77d);
+  }
+
+  .status-live { @apply inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider; color: #10b981; }
+  .status-synced { @apply inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider; color: #3b82f6; }
+  .status-offline { @apply inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider; color: #ef4444; }
+}
+
+@keyframes signal-pulse {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.8); }
+}
+
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-sweep { animation: radar-sweep 3s linear infinite; }
+
+@keyframes landing-pulse {
+  0%, 100% { border-color: #a08563; }
+  50% { border-color: #bfa77d; }
+}
+
+.landing-zone-active { animation: landing-pulse 1s ease-in-out infinite; }
