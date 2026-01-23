@@ -13,10 +13,17 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    // Connection pool settings for Supabase
+    max: 10, // Maximum connections in pool
+    idleTimeoutMillis: 30000, // Close idle connections after 30s
+    connectionTimeoutMillis: 10000, // Fail if can't connect in 10s
   })
-  
+
+  // Store pool reference for cleanup
+  globalForPrisma.pool = pool
+
   const adapter = new PrismaPg(pool)
-  
+
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],

@@ -51,7 +51,7 @@ export function useAssignments(options: UseAssignmentsOptions = {}) {
         .from('assignments')
         .select(`
           *,
-          organization:crm_contacts!organization_id(id, name, company),
+          organization:crm_organizations!organization_id(id, name),
           candidate:candidates(id, first_name, last_name, primary_role, avatar_url, phone, email),
           request:customer_requests(id, request_number, title)
         `, { count: 'exact' })
@@ -124,7 +124,7 @@ export function useAssignment(id: string | undefined) {
         .from('assignments')
         .select(`
           *,
-          organization:crm_contacts!organization_id(id, name, company, email, phone),
+          organization:crm_organizations!organization_id(id, name, org_number, website),
           candidate:candidates(id, first_name, last_name, primary_role, avatar_url, phone, email, compliance_status),
           request:customer_requests(id, request_number, title)
         `)

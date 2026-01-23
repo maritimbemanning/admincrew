@@ -17,8 +17,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AdminCrew - Operations Hub",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.bluecrew.no'
+  ),
+  title: {
+    default: "AdminCrew - Operations Hub",
+    template: "%s | AdminCrew",
+  },
   description: "Maritim bemanning og operasjonsstyring",
+  robots: {
+    index: false, // Admin panel should not be indexed
+    follow: false,
+  },
 };
 
 export default function RootLayout({

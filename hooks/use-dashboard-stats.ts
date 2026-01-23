@@ -38,31 +38,67 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: dashboardKeys.stats(),
     queryFn: async (): Promise<DashboardStats> => {
-      // Get available candidates count
-      const { count: availableCandidates } = await supabase
-        .from('candidates')
-        .select('*', { count: 'exact', head: true })
-        .in('availability_status', ['available', 'available_soon'])
-        .is('archived_at', null)
+      const today = new Date().toISOString().split('T')[0]
+      const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-      // Get open requests count
-      const { data: requestData } = await supabase
-        .from('customer_requests')
-        .select('id, priority')
-        .not('status', 'in', '("converted","cancelled","expired")')
+      // Execute all queries in parallel
+      const [
+        candidatesResult,
+        requestsResult,
+        assignmentsResult,
+        complianceResult,
+        timesheetsResult,
+        certificatesResult,
+      ] = await Promise.all([
+        // Available candidates count
+        supabase
+          .from('candidates')
+          .select('*', { count: 'exact', head: true })
+          .in('availability_status', ['available', 'available_soon'])
+          .is('archived_at', null),
 
+        // Open requests with priority
+        supabase
+          .from('customer_requests')
+          .select('id, priority')
+          .not('status', 'in', '("converted","cancelled","expired")'),
+
+        // Assignments with status and start date
+        supabase
+          .from('assignments')
+          .select('id, status, planned_start_date')
+          .in('status', ['contract_signed', 'ready_for_start', 'active']),
+
+        // Compliance pending count
+        supabase
+          .from('candidates')
+          .select('*', { count: 'exact', head: true })
+          .in('compliance_status', ['documents_pending', 'review_pending'])
+          .is('archived_at', null),
+
+        // Pending timesheet approvals
+        supabase
+          .from('assignment_timesheets')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'submitted'),
+
+        // Expiring certificates (next 30 days)
+        supabase
+          .from('candidate_certifications')
+          .select('*', { count: 'exact', head: true })
+          .lte('expiry_date', thirtyDaysFromNow)
+          .gte('expiry_date', today)
+          .eq('status', 'active'),
+      ])
+
+      // Process request data
+      const requestData = requestsResult.data
       const openRequests = requestData?.length || 0
       const urgentRequests = requestData?.filter(r => r.priority === 'urgent').length || 0
 
-      // Get active assignments count
-      const today = new Date().toISOString().split('T')[0]
-      const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-      const { data: assignmentData } = await supabase
-        .from('assignments')
-        .select('id, status, planned_start_date')
-        .in('status', ['contract_signed', 'ready_for_start', 'active'])
-
+      // Process assignment data
+      const assignmentData = assignmentsResult.data
       const activeAssignments = assignmentData?.filter(a => a.status === 'active').length || 0
       const startingThisWeek = assignmentData?.filter(a =>
         a.planned_start_date &&
@@ -70,37 +106,15 @@ export function useDashboardStats() {
         a.planned_start_date <= weekFromNow
       ).length || 0
 
-      // Get compliance pending count
-      const { count: compliancePending } = await supabase
-        .from('candidates')
-        .select('*', { count: 'exact', head: true })
-        .in('compliance_status', ['documents_pending', 'review_pending'])
-        .is('archived_at', null)
-
-      // Get pending timesheet approvals
-      const { count: pendingTimesheets } = await supabase
-        .from('assignment_timesheets')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'submitted')
-
-      // Get expiring certificates (next 30 days)
-      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      const { count: expiringCertificates } = await supabase
-        .from('candidate_certifications')
-        .select('*', { count: 'exact', head: true })
-        .lte('expiry_date', thirtyDaysFromNow)
-        .gte('expiry_date', today)
-        .eq('status', 'active')
-
       return {
-        availableCandidates: availableCandidates || 0,
+        availableCandidates: candidatesResult.count || 0,
         openRequests,
         urgentRequests,
         activeAssignments,
         startingThisWeek,
-        pendingApprovals: (pendingTimesheets || 0),
-        compliancePending: compliancePending || 0,
-        expiringCertificates: expiringCertificates || 0,
+        pendingApprovals: timesheetsResult.count || 0,
+        compliancePending: complianceResult.count || 0,
+        expiringCertificates: certificatesResult.count || 0,
       }
     },
     staleTime: 30 * 1000, // 30 seconds

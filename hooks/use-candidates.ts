@@ -201,16 +201,29 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
   // Get candidate_ids for loading relations (certs, pools)
   const candidateIds = (data || []).map(p => p.candidate_id).filter(Boolean) as string[]
 
-  // Fetch certifications via candidate_id link
+  // Fetch certifications and pool memberships in parallel
   type CertInfo = { id: string; code: string; name: string; expiry_date: string | null; is_permanent: boolean; issuer: string | null; document_verified: boolean }
   let certificationsMap: Record<string, Array<CertInfo>> = {}
-  if (candidateIds.length > 0) {
-    const { data: certifications } = await supabase
-      .from('candidate_certifications')
-      .select('id, candidate_id, code, name, expiry_date, is_permanent, issuer, document_verified, status')
-      .in('candidate_id', candidateIds)
-      .eq('status', 'active')
+  let poolsMap: Record<string, Array<{ id: string; name: string; color: string; slug: string }>> = {}
 
+  if (candidateIds.length > 0) {
+    const [certificationsResult, poolMembershipsResult] = await Promise.all([
+      // Fetch certifications via candidate_id link
+      supabase
+        .from('candidate_certifications')
+        .select('id, candidate_id, code, name, expiry_date, is_permanent, issuer, document_verified, status')
+        .in('candidate_id', candidateIds)
+        .eq('status', 'active'),
+
+      // Fetch pool memberships via candidate_id link
+      supabase
+        .from('candidate_pool_memberships')
+        .select('candidate_id, pool:candidate_pools(id, name, color, slug)')
+        .in('candidate_id', candidateIds),
+    ])
+
+    // Process certifications
+    const certifications = certificationsResult.data
     certificationsMap = (certifications || []).reduce((acc, cert) => {
       if (!acc[cert.candidate_id]) {
         acc[cert.candidate_id] = []
@@ -226,16 +239,9 @@ async function fetchCandidates(options: UseCandidatesOptions): Promise<Candidate
       })
       return acc
     }, {} as Record<string, Array<CertInfo>>)
-  }
 
-  // Fetch pool memberships via candidate_id link
-  let poolsMap: Record<string, Array<{ id: string; name: string; color: string; slug: string }>> = {}
-  if (candidateIds.length > 0) {
-    const { data: poolMemberships } = await supabase
-      .from('candidate_pool_memberships')
-      .select('candidate_id, pool:candidate_pools(id, name, color, slug)')
-      .in('candidate_id', candidateIds)
-
+    // Process pool memberships
+    const poolMemberships = poolMembershipsResult.data
     poolsMap = (poolMemberships || []).reduce((acc, membership) => {
       if (!acc[membership.candidate_id]) {
         acc[membership.candidate_id] = []
