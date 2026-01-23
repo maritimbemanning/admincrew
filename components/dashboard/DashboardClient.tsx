@@ -5,29 +5,25 @@ import { useRouter } from "next/navigation"
 import {
   Users,
   ClipboardList,
-  AlertTriangle,
   Plus,
-  Target,
-  Anchor,
   Zap,
   FileText,
   Building2,
   Calendar,
   Clock,
-  ShieldCheck,
   TrendingUp,
+  ArrowUpRight,
+  ArrowRight,
+  ChevronRight,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDashboardStats, useRecentActivity } from "@/hooks/use-dashboard-stats"
-import { useDealsPipeline, dealStages } from "@/hooks/use-deals"
-import { formatDistanceToNow, format } from "date-fns"
+import { useDealsPipeline } from "@/hooks/use-deals"
+import { format } from "date-fns"
 import { nb } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MISSION OPERATIONS CENTER DASHBOARD
-// ═══════════════════════════════════════════════════════════════════════════════
 
 export default function DashboardClient() {
   const router = useRouter()
@@ -42,22 +38,11 @@ export default function DashboardClient() {
     const total = (stats.activeAssignments || 0) + (stats.openRequests || 0)
     const fillRate = total > 0 ? Math.round((stats.activeAssignments / total) * 100) : 0
 
-    // Determine system status based on metrics
-    const hasUrgent = stats.urgentRequests > 0
-    const hasCritical = stats.expiringCertificates > 5 || stats.compliancePending > 10
-
-    const systemStatus: 'nominal' | 'attention' | 'critical' =
-      hasCritical ? 'critical' : hasUrgent ? 'attention' : 'nominal'
-
-    return {
-      fillRate,
-      systemStatus,
-    }
+    return { fillRate }
   }, [stats])
 
   // Keyboard shortcut handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Only trigger if no input is focused
     if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return
 
     const shortcuts: Record<string, string> = {
@@ -69,7 +54,6 @@ export default function DashboardClient() {
       'g+o': '/crm',
     }
 
-    // Simple two-key combo detection
     if (e.key.toLowerCase() === 'n' || e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'g') {
       const waitForSecond = (first: string) => {
         const handler = (e2: KeyboardEvent) => {
@@ -98,127 +82,107 @@ export default function DashboardClient() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* ═══════════════════════════════════════════════════════════════════════
-          SITUATION OVERVIEW - Glass Panel Hero
-          ═══════════════════════════════════════════════════════════════════════ */}
-      <section className="glass-panel rounded-2xl p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-navy-800/10 dark:bg-navy-800/50">
-              <Target className="h-5 w-5 text-gold-500" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight">Situation Overview</h1>
-              <p className="text-coordinates">
-                {format(new Date(), "yyyy-MM-dd • HH:mm", { locale: nb })} UTC+1
-              </p>
-            </div>
-          </div>
-          <SystemStatusBadge status={metrics?.systemStatus || 'nominal'} />
-        </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
+          {format(new Date(), "EEEE d. MMMM yyyy", { locale: nb })}
+        </p>
+      </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-          <MetricCard
-            label="Tilgjengelige"
-            value={stats?.availableCandidates || 0}
-            status="green"
-            subtitle="kandidater"
-          />
-          <MetricCard
-            label="Aktive Oppdrag"
-            value={stats?.activeAssignments || 0}
-            status="blue"
-            subtitle="pågående"
-          />
-          <MetricCard
-            label="Åpne Requests"
-            value={stats?.openRequests || 0}
-            status={stats?.urgentRequests ? 'yellow' : 'green'}
-            subtitle={stats?.urgentRequests ? `${stats.urgentRequests} haster` : 'forespørsler'}
-          />
-          <MetricCard
-            label="Fill Rate"
-            value={`${metrics?.fillRate || 0}%`}
-            status={metrics?.fillRate && metrics.fillRate >= 70 ? 'green' : metrics?.fillRate && metrics.fillRate >= 50 ? 'yellow' : 'red'}
-            subtitle="kapasitet"
-          />
-          <MetricCard
-            label="Starter Denne Uka"
-            value={stats?.startingThisWeek || 0}
-            status="blue"
-            subtitle="oppdrag"
-          />
-        </div>
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Tilgjengelige kandidater"
+          value={stats?.availableCandidates || 0}
+          change={null}
+          onClick={() => router.push('/candidates?status=available')}
+        />
+        <StatCard
+          label="Aktive oppdrag"
+          value={stats?.activeAssignments || 0}
+          change={null}
+          onClick={() => router.push('/operations/assignments?status=active')}
+        />
+        <StatCard
+          label="Åpne forespørsler"
+          value={stats?.openRequests || 0}
+          highlight={stats?.urgentRequests ? stats.urgentRequests > 0 : false}
+          subtitle={stats?.urgentRequests ? `${stats.urgentRequests} haster` : undefined}
+          onClick={() => router.push('/operations/requests')}
+        />
+        <StatCard
+          label="Fill rate"
+          value={`${metrics?.fillRate || 0}%`}
+          change={null}
+          onClick={() => router.push('/operations')}
+        />
+      </div>
 
-        {/* Alert Indicators */}
-        {(stats?.urgentRequests || stats?.expiringCertificates || stats?.compliancePending) ? (
-          <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-border/50">
-            {stats.urgentRequests > 0 && (
-              <AlertIndicator
-                label="Haster"
-                count={stats.urgentRequests}
-                status="red"
-                onClick={() => router.push('/operations/requests?priority=urgent')}
-              />
-            )}
-            {stats.expiringCertificates > 0 && (
-              <AlertIndicator
-                label="Utløpende Sert."
-                count={stats.expiringCertificates}
-                status="yellow"
-                onClick={() => router.push('/candidates?certExpiring=30')}
-              />
-            )}
-            {stats.compliancePending > 0 && (
-              <AlertIndicator
-                label="Compliance"
-                count={stats.compliancePending}
-                status="yellow"
-                onClick={() => router.push('/candidates/compliance')}
-              />
-            )}
-          </div>
-        ) : null}
-      </section>
+      {/* Alerts */}
+      {(stats?.urgentRequests || stats?.expiringCertificates || stats?.compliancePending) ? (
+        <div className="flex flex-wrap gap-3">
+          {stats.urgentRequests > 0 && (
+            <AlertBadge
+              label="Haster"
+              count={stats.urgentRequests}
+              variant="error"
+              onClick={() => router.push('/operations/requests?priority=urgent')}
+            />
+          )}
+          {stats.expiringCertificates > 0 && (
+            <AlertBadge
+              label="Utlopende sertifikater"
+              count={stats.expiringCertificates}
+              variant="warning"
+              onClick={() => router.push('/candidates?certExpiring=30')}
+            />
+          )}
+          {stats.compliancePending > 0 && (
+            <AlertBadge
+              label="Compliance venter"
+              count={stats.compliancePending}
+              variant="warning"
+              onClick={() => router.push('/candidates/compliance')}
+            />
+          )}
+        </div>
+      ) : null}
 
       {/* Main Grid */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* ═══════════════════════════════════════════════════════════════════════
-            QUICK ACTIONS - Operation Cards
-            ═══════════════════════════════════════════════════════════════════════ */}
-        <section className="lg:col-span-7 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-tactical text-muted-foreground">Operations</span>
-            <div className="flex-1 h-px bg-border/50" />
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Quick Actions */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">Hurtighandlinger</h2>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <OperationCard
-              title="Ny Kandidat"
+            <ActionCard
+              title="Ny kandidat"
               description="Registrer ny maritim profesjonell"
               icon={Users}
               shortcut="N C"
               onClick={() => router.push('/candidates/new')}
             />
-            <OperationCard
-              title="Ny Request"
+            <ActionCard
+              title="Ny forespørsel"
               description="Opprett bemanningsforespørsel"
               icon={ClipboardList}
               shortcut="N R"
               onClick={() => router.push('/operations/requests/new')}
             />
-            <OperationCard
+            <ActionCard
               title="Quick Match"
-              description="10-sekunders matching engine"
+              description="Finn kandidater pa 10 sekunder"
               icon={Zap}
               shortcut="Q M"
               highlight
               onClick={() => router.push('/operations/matching')}
             />
-            <OperationCard
-              title="Ny Deal"
+            <ActionCard
+              title="Ny deal"
               description="Opprett salgsmulighet"
               icon={TrendingUp}
               shortcut="N D"
@@ -226,226 +190,187 @@ export default function DashboardClient() {
             />
           </div>
 
-          {/* Secondary Actions */}
-          <div className="grid gap-3 sm:grid-cols-3 mt-4">
-            <SecondaryActionCard
-              label="Kandidater"
-              count={stats?.availableCandidates || 0}
-              icon={Users}
-              shortcut="G C"
-              onClick={() => router.push('/candidates')}
+          {/* Secondary Links */}
+          <div className="grid gap-2 sm:grid-cols-3 pt-2">
+            <QuickLink
+              label="Alle kandidater"
+              count={stats?.availableCandidates}
+              href="/candidates"
             />
-            <SecondaryActionCard
-              label="CRM"
-              icon={Building2}
-              shortcut="G O"
-              onClick={() => router.push('/crm')}
+            <QuickLink
+              label="CRM Pipeline"
+              href="/crm"
             />
-            <SecondaryActionCard
+            <QuickLink
               label="Timelister"
-              count={stats?.pendingApprovals || 0}
-              icon={Clock}
-              badge={stats?.pendingApprovals ? 'Pending' : undefined}
-              onClick={() => router.push('/timesheets/approve')}
+              count={stats?.pendingApprovals}
+              badge={stats?.pendingApprovals ? "Venter" : undefined}
+              href="/timesheets/approve"
             />
           </div>
-        </section>
+        </div>
 
-        {/* ═══════════════════════════════════════════════════════════════════════
-            COMMS LOG - Activity Feed
-            ═══════════════════════════════════════════════════════════════════════ */}
-        <section className="lg:col-span-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-tactical text-muted-foreground">Comms Log</span>
-            <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider">
-              <span className="signal-light signal-light-green w-1.5 h-1.5 mr-1.5" />
+        {/* Activity Feed */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">Siste aktivitet</h2>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
               Live
-            </Badge>
+            </div>
           </div>
 
-          <div className="glass-panel rounded-xl p-4 space-y-1 max-h-[360px] overflow-auto">
+          <div className="bg-card rounded-xl border border-border divide-y divide-border">
             {activityLoading ? (
               <ActivitySkeleton />
             ) : recentActivity?.length ? (
-              recentActivity.map((activity, i) => (
-                <CommsLogEntry
-                  key={activity.id}
-                  activity={activity}
-                  isLatest={i === 0}
-                />
+              recentActivity.map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} />
               ))
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Ingen aktivitet enda</p>
+              <div className="p-8 text-center">
+                <Clock className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">Ingen aktivitet enda</p>
               </div>
             )}
           </div>
-        </section>
+        </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          RADAR STRIP - Pipeline Mini-View
-          ═══════════════════════════════════════════════════════════════════════ */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-tactical text-muted-foreground">Pipeline Radar</span>
-            <div className="flex-1 h-px bg-border/50" />
-          </div>
-          <button
-            onClick={() => router.push('/crm/deals')}
-            className="text-xs text-muted-foreground hover:text-gold-500 transition-colors font-mono uppercase tracking-wider"
-          >
-            Full View →
-          </button>
+      {/* Pipeline Overview */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Pipeline oversikt</h2>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/crm/deals')}>
+            Se alle
+            <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
         </div>
 
         {pipelineLoading ? (
-          <RadarStripSkeleton />
+          <PipelineSkeleton />
         ) : (
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {pipelineData?.columns
-              .filter(col => col.id !== 'closed_lost')
-              .map((stage) => (
-                <RadarStripBlock
-                  key={stage.id}
-                  label={stage.label}
-                  count={stage.count}
-                  value={stage.totalValue}
-                  isWon={stage.id === 'closed_won'}
-                  onClick={() => router.push(`/crm/deals?stage=${stage.id}`)}
-                />
-              ))}
-          </div>
-        )}
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {pipelineData?.columns
+                .filter(col => col.id !== 'closed_lost')
+                .map((stage) => (
+                  <PipelineCard
+                    key={stage.id}
+                    label={stage.label}
+                    count={stage.count}
+                    value={stage.totalValue}
+                    isWon={stage.id === 'closed_won'}
+                    onClick={() => router.push(`/crm/deals?stage=${stage.id}`)}
+                  />
+                ))}
+            </div>
 
-        {/* Pipeline Summary */}
-        {pipelineData?.stats && (
-          <div className="flex items-center gap-6 mt-3 pt-3 border-t border-border/30">
-            <div className="text-sm">
-              <span className="text-muted-foreground">Total Pipeline:</span>{' '}
-              <span className="font-mono font-medium text-gold-500">
-                {formatNOK(pipelineData.stats.totalValue)}
-              </span>
-            </div>
-            <div className="text-sm">
-              <span className="text-muted-foreground">Vektet:</span>{' '}
-              <span className="font-mono font-medium">
-                {formatNOK(pipelineData.stats.weightedValue)}
-              </span>
-            </div>
-            <div className="text-sm">
-              <span className="text-muted-foreground">Vunnet:</span>{' '}
-              <span className="font-mono font-medium text-emerald-500">
-                {formatNOK(pipelineData.stats.wonValue)}
-              </span>
-            </div>
-          </div>
+            {/* Pipeline Summary */}
+            {pipelineData?.stats && (
+              <div className="flex flex-wrap items-center gap-6 pt-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Total: </span>
+                  <span className="font-medium">{formatNOK(pipelineData.stats.totalValue)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Vektet: </span>
+                  <span className="font-medium">{formatNOK(pipelineData.stats.weightedValue)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Vunnet: </span>
+                  <span className="font-medium text-green-600">{formatNOK(pipelineData.stats.wonValue)}</span>
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </section>
+      </div>
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: System Status Badge
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function SystemStatusBadge({ status }: { status: 'nominal' | 'attention' | 'critical' }) {
-  const config = {
-    nominal: { label: 'Nominal', color: 'signal-light-green', textClass: 'text-emerald-600 dark:text-emerald-400' },
-    attention: { label: 'Attention', color: 'signal-light-yellow', textClass: 'text-amber-600 dark:text-amber-400' },
-    critical: { label: 'Critical', color: 'signal-light-red', textClass: 'text-red-600 dark:text-red-400' },
-  }
-
-  const { label, color, textClass } = config[status]
-
-  return (
-    <div className={cn("flex items-center gap-2 text-xs font-mono uppercase tracking-wider", textClass)}>
-      <span className={cn("signal-light w-2 h-2", color)} />
-      {label}
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: Metric Card (for Situation Overview)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function MetricCard({
+// Stat Card Component
+function StatCard({
   label,
   value,
-  status,
-  subtitle
-}: {
-  label: string
-  value: string | number
-  status: 'green' | 'yellow' | 'red' | 'blue'
-  subtitle: string
-}) {
-  const signalClass = {
-    green: 'signal-light-green',
-    yellow: 'signal-light-yellow',
-    red: 'signal-light-red',
-    blue: 'signal-light-blue',
-  }[status]
-
-  return (
-    <div className="relative p-4 rounded-xl bg-card/50 dark:bg-navy-800/30 border border-border/30">
-      <div className="absolute top-3 right-3">
-        <span className={cn("signal-light w-2 h-2", signalClass)} />
-      </div>
-      <p className="text-3xl md:text-4xl font-mono font-bold tracking-tight">
-        {value}
-      </p>
-      <p className="text-xs font-medium text-foreground mt-1">{label}</p>
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{subtitle}</p>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: Alert Indicator
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function AlertIndicator({
-  label,
-  count,
-  status,
+  change,
+  highlight,
+  subtitle,
   onClick
 }: {
   label: string
-  count: number
-  status: 'red' | 'yellow'
-  onClick: () => void
+  value: string | number
+  change?: number | null
+  highlight?: boolean
+  subtitle?: string
+  onClick?: () => void
 }) {
-  const bgClass = status === 'red'
-    ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30'
-    : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
-  const textClass = status === 'red' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
-  const signalClass = status === 'red' ? 'signal-light-red' : 'signal-light-yellow'
-
   return (
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors",
-        bgClass
+        "bg-card rounded-xl border border-border p-5 text-left transition-all hover:shadow-md hover:border-border/80",
+        highlight && "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
       )}
     >
-      <span className={cn("signal-light w-2 h-2", signalClass)} />
-      <span className={cn("text-xs font-medium", textClass)}>{label}</span>
-      <span className={cn("text-xs font-mono font-bold", textClass)}>{count}</span>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-3xl font-semibold tracking-tight mt-1">{value}</p>
+      {subtitle && (
+        <p className={cn(
+          "text-xs mt-1",
+          highlight ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+        )}>
+          {subtitle}
+        </p>
+      )}
+      {change !== null && change !== undefined && (
+        <div className={cn(
+          "flex items-center gap-1 text-xs mt-2",
+          change >= 0 ? "text-green-600" : "text-red-600"
+        )}>
+          <ArrowUpRight className={cn("h-3 w-3", change < 0 && "rotate-180")} />
+          {Math.abs(change)}% fra forrige uke
+        </div>
+      )}
     </button>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: Operation Card (Quick Actions)
-// ═══════════════════════════════════════════════════════════════════════════════
+// Alert Badge Component
+function AlertBadge({
+  label,
+  count,
+  variant,
+  onClick
+}: {
+  label: string
+  count: number
+  variant: 'error' | 'warning'
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+        variant === 'error'
+          ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+          : "bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-400 dark:hover:bg-amber-900"
+      )}
+    >
+      <span className={cn(
+        "w-1.5 h-1.5 rounded-full",
+        variant === 'error' ? "bg-red-500" : "bg-amber-500"
+      )} />
+      {label}
+      <span className="font-semibold">{count}</span>
+    </button>
+  )
+}
 
-function OperationCard({
+// Action Card Component
+function ActionCard({
   title,
   description,
   icon: Icon,
@@ -464,22 +389,18 @@ function OperationCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative text-left p-5 rounded-xl transition-all duration-200",
-        "bg-card dark:bg-navy-800/50 border border-border/50",
-        "hover:shadow-lg hover:shadow-gold-500/10 hover:border-gold-500/30",
-        "hover:-translate-y-0.5",
-        highlight && "ring-1 ring-gold-500/30"
+        "group relative text-left p-5 rounded-xl transition-all",
+        "bg-card border border-border",
+        "hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800",
+        highlight && "border-indigo-200 bg-indigo-50/50 dark:border-indigo-800 dark:bg-indigo-950/20"
       )}
     >
-      {/* Docking Stripes Header */}
-      <div className="absolute inset-x-0 top-0 h-1 rounded-t-xl docking-stripes" />
-
       {/* Keyboard Shortcut */}
-      <div className="absolute top-3 right-3 flex gap-1">
+      <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         {shortcut.split(' ').map((key, i) => (
           <kbd
             key={i}
-            className="px-1.5 py-0.5 text-[10px] font-mono bg-muted/50 rounded border border-border/50 text-muted-foreground"
+            className="px-1.5 py-0.5 text-[10px] font-mono bg-muted rounded border border-border text-muted-foreground"
           >
             {key}
           </kbd>
@@ -487,78 +408,62 @@ function OperationCard({
       </div>
 
       <div className={cn(
-        "p-2.5 rounded-lg w-fit mb-3 transition-colors",
+        "p-2 rounded-lg w-fit mb-3",
         highlight
-          ? "bg-gold-500/20 text-gold-600 dark:text-gold-400"
-          : "bg-muted/50 text-muted-foreground group-hover:bg-gold-500/10 group-hover:text-gold-600 dark:group-hover:text-gold-400"
+          ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400"
+          : "bg-muted text-muted-foreground group-hover:bg-indigo-100 group-hover:text-indigo-600 dark:group-hover:bg-indigo-900 dark:group-hover:text-indigo-400"
       )}>
         <Icon className="h-5 w-5" />
       </div>
 
-      <h3 className="font-semibold text-foreground">{title}</h3>
+      <h3 className="font-medium text-foreground">{title}</h3>
       <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
     </button>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: Secondary Action Card
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function SecondaryActionCard({
+// Quick Link Component
+function QuickLink({
   label,
   count,
-  icon: Icon,
-  shortcut,
   badge,
-  onClick
+  href
 }: {
   label: string
   count?: number
-  icon: React.ElementType
-  shortcut?: string
   badge?: string
-  onClick: () => void
+  href: string
 }) {
+  const router = useRouter()
+
   return (
     <button
-      onClick={onClick}
-      className={cn(
-        "group flex items-center gap-3 p-3 rounded-lg transition-all",
-        "bg-muted/30 hover:bg-muted/50 border border-transparent hover:border-border/50"
-      )}
+      onClick={() => router.push(href)}
+      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
     >
-      <Icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
       <span className="text-sm font-medium">{label}</span>
-      {count !== undefined && (
-        <span className="ml-auto font-mono text-sm text-muted-foreground">{count}</span>
+      {count !== undefined && !badge && (
+        <span className="text-sm text-muted-foreground">{count}</span>
       )}
       {badge && (
-        <Badge variant="secondary" className="ml-auto text-[10px]">{badge}</Badge>
+        <Badge variant="secondary" className="text-xs">{badge}</Badge>
       )}
-      {shortcut && !count && !badge && (
-        <kbd className="ml-auto text-[10px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-          {shortcut}
-        </kbd>
+      {!count && !badge && (
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
       )}
     </button>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: Comms Log Entry
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function CommsLogEntry({
-  activity,
-  isLatest
+// Activity Item Component
+function ActivityItem({
+  activity
 }: {
   activity: { id: string; type: string; title: string; subtitle?: string; timestamp: string }
-  isLatest: boolean
 }) {
   const getTypeIcon = () => {
     switch (activity.type) {
-      case 'assignment_started': return Anchor
+      case 'assignment_started': return FileText
       case 'contract_signed': return FileText
       case 'request_created': return ClipboardList
       case 'candidate_created': return Users
@@ -567,39 +472,27 @@ function CommsLogEntry({
   }
 
   const Icon = getTypeIcon()
-  const signalClass = isLatest ? 'signal-light-green' : 'signal-light-gray'
 
   return (
-    <div className={cn(
-      "flex items-start gap-3 p-3 rounded-lg transition-colors",
-      isLatest && "bg-emerald-500/5 border border-emerald-500/20"
-    )}>
-      <div className="flex-shrink-0 mt-0.5">
-        <span className={cn("signal-light w-2 h-2", signalClass, isLatest && "animate-pulse")} />
+    <div className="flex items-start gap-3 p-4">
+      <div className="p-1.5 rounded-md bg-muted">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          <span className="text-sm font-medium truncate">{activity.title}</span>
-        </div>
+        <p className="text-sm font-medium truncate">{activity.title}</p>
         {activity.subtitle && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.subtitle}</p>
+          <p className="text-xs text-muted-foreground truncate">{activity.subtitle}</p>
         )}
       </div>
-
-      <time className="text-[10px] font-mono text-muted-foreground flex-shrink-0 tabular-nums">
+      <time className="text-xs text-muted-foreground tabular-nums">
         {format(new Date(activity.timestamp), "HH:mm")}
       </time>
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENT: Radar Strip Block
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function RadarStripBlock({
+// Pipeline Card Component
+function PipelineCard({
   label,
   count,
   value,
@@ -616,32 +509,24 @@ function RadarStripBlock({
     <button
       onClick={onClick}
       className={cn(
-        "flex-shrink-0 min-w-[140px] p-3 rounded-lg transition-all",
-        "bg-card dark:bg-navy-800/50 border border-border/50",
-        "hover:border-gold-500/30 hover:shadow-md",
-        isWon && "border-emerald-500/30 bg-emerald-500/5"
+        "p-4 rounded-xl transition-all text-left",
+        "bg-card border border-border",
+        "hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800",
+        isWon && "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20"
       )}
     >
-      <div className="docking-stripes h-0.5 w-full rounded-full mb-2" />
-
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
-          {label}
-        </span>
-        <Badge
-          variant={count > 0 ? "default" : "secondary"}
-          className={cn(
-            "text-[10px] font-mono h-5 min-w-5",
-            isWon && count > 0 && "bg-emerald-500"
-          )}
-        >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <Badge variant={count > 0 ? "default" : "secondary"} className={cn(
+          "text-xs",
+          isWon && count > 0 && "bg-green-600"
+        )}>
           {count}
         </Badge>
       </div>
-
       <p className={cn(
-        "text-sm font-mono font-medium",
-        isWon ? "text-emerald-500" : "text-gold-500"
+        "text-lg font-semibold",
+        isWon ? "text-green-600" : "text-foreground"
       )}>
         {formatNOK(value)}
       </p>
@@ -649,10 +534,7 @@ function RadarStripBlock({
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// Helpers
 function formatNOK(value: number): string {
   if (value >= 1000000) {
     return `${(value / 1000000).toFixed(1)}M`
@@ -663,55 +545,33 @@ function formatNOK(value: number): string {
   return value.toString()
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SKELETONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// Skeletons
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
-      {/* Hero Skeleton */}
-      <div className="glass-panel rounded-2xl p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-9 w-9 rounded-lg" />
-            <div>
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-3 w-32 mt-1" />
-            </div>
-          </div>
-          <Skeleton className="h-4 w-20" />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
+    <div className="space-y-8">
+      <div>
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-5 w-48 mt-1" />
       </div>
 
-      {/* Main Grid Skeleton */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7 space-y-4">
-          <Skeleton className="h-4 w-24" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4">
+          <Skeleton className="h-6 w-32" />
           <div className="grid gap-3 sm:grid-cols-2">
             {[...Array(4)].map((_, i) => (
               <Skeleton key={i} className="h-32 rounded-xl" />
             ))}
           </div>
         </div>
-        <div className="lg:col-span-5">
-          <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-[360px] rounded-xl" />
-        </div>
-      </div>
-
-      {/* Radar Strip Skeleton */}
-      <div>
-        <Skeleton className="h-4 w-32 mb-3" />
-        <div className="flex gap-2">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-20 w-36 rounded-lg flex-shrink-0" />
-          ))}
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-80 rounded-xl" />
         </div>
       </div>
     </div>
@@ -720,10 +580,10 @@ function DashboardSkeleton() {
 
 function ActivitySkeleton() {
   return (
-    <div className="space-y-2">
+    <>
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex items-start gap-3 p-3">
-          <Skeleton className="h-2 w-2 rounded-full" />
+        <div key={i} className="flex items-start gap-3 p-4">
+          <Skeleton className="h-8 w-8 rounded-md" />
           <div className="flex-1">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2 mt-1" />
@@ -731,15 +591,15 @@ function ActivitySkeleton() {
           <Skeleton className="h-3 w-10" />
         </div>
       ))}
-    </div>
+    </>
   )
 }
 
-function RadarStripSkeleton() {
+function PipelineSkeleton() {
   return (
-    <div className="flex gap-2">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {[...Array(5)].map((_, i) => (
-        <Skeleton key={i} className="h-20 w-36 rounded-lg flex-shrink-0" />
+        <Skeleton key={i} className="h-24 rounded-xl" />
       ))}
     </div>
   )

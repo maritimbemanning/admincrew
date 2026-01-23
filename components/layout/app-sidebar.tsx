@@ -186,7 +186,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-white shadow-sm overflow-hidden">
+                <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-white shadow-sm overflow-hidden">
                   <Image
                     src="/logo.png"
                     alt="Bluecrew"
@@ -196,8 +196,8 @@ export function AppSidebar() {
                   />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium text-cream-50">Bluecrew</span>
-                  <span className="truncate text-xs text-gold-400">Admin Command</span>
+                  <span className="truncate font-semibold text-sidebar-foreground">AdminCrew</span>
+                  <span className="truncate text-xs text-sidebar-foreground/60">Operations Hub</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -208,12 +208,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="w-full justify-start gap-2 text-cream-100/70 hover:text-cream-50 hover:bg-navy-700/50 mt-2"
+              className="w-full justify-start gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent mt-2"
               onClick={() => setCommandPaletteOpen(true)}
             >
-              <Search className="h-4 w-4 text-gold-400" />
+              <Search className="h-4 w-4" />
               <span>Hurtigsøk...</span>
-              <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded-md border border-navy-700 bg-navy-800 px-1.5 font-mono text-[10px] font-medium text-cream-100/50">
+              <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-sidebar-border bg-sidebar-accent px-1.5 font-mono text-[10px] font-medium text-sidebar-foreground/50">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </SidebarMenuButton>
@@ -223,7 +223,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigasjon</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/50">Navigasjon</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
@@ -270,7 +270,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Innstillinger</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/50">Innstillinger</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -291,16 +291,16 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="hover:bg-navy-700/50">
-                  <Avatar className="h-8 w-8 border border-gold-500/30">
+                <SidebarMenuButton size="lg" className="hover:bg-sidebar-accent">
+                  <Avatar className="h-8 w-8 border border-sidebar-border">
                     <AvatarImage src={user?.user_metadata?.avatar_url || ''} />
-                    <AvatarFallback className="bg-gold-500 text-navy-900 font-medium text-sm">{userInitials || 'U'}</AvatarFallback>
+                    <AvatarFallback className="bg-indigo-600 text-white font-medium text-sm">{userInitials || 'U'}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium text-cream-50">{userDisplayName}</span>
-                    <span className="truncate text-xs text-cream-100/60">{userEmail}</span>
+                    <span className="truncate font-medium text-sidebar-foreground">{userDisplayName}</span>
+                    <span className="truncate text-xs text-sidebar-foreground/60">{userEmail}</span>
                   </div>
-                  <ChevronDown className="ml-auto h-4 w-4 text-cream-100/50" />
+                  <ChevronDown className="ml-auto h-4 w-4 text-sidebar-foreground/50" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent

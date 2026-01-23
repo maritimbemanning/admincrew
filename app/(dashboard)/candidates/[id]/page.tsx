@@ -3,7 +3,7 @@
 import { use, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { notFound, useRouter } from 'next/navigation'
-import { useCandidate, useUpdateCandidateRating, useUpdateCandidateTags, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
+import { useCandidate, useAddCandidateToPool, useRemoveCandidateFromPool, usePools } from '@/hooks'
 import { useUploadCandidateCv, calculateProfileCompleteness, useArchiveCandidate } from '@/hooks/use-candidate'
 import { getCvSignedUrl } from '@/hooks/use-inbox'
 import { toast } from 'sonner'
@@ -13,9 +13,6 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { PageHeader } from '@/components/command/page-header'
-import { SignalLight, getSignalStatus } from '@/components/command/signal-light'
-import { MatchScoreBar } from '@/components/command/match-score-bar'
 import {
   Star,
   Phone,
@@ -26,7 +23,6 @@ import {
   Upload,
   Loader2,
   Edit,
-  Target,
   Shield,
   Clock,
   CheckCircle,
@@ -37,33 +33,45 @@ import {
   Award,
   History,
   User,
-  Building,
   Anchor,
+  ChevronLeft,
+  ExternalLink,
+  MoreHorizontal,
+  Copy,
+  Trash2,
+  Heart,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { AvailabilityStatus, ComplianceStatus } from '@/types'
-import { format, formatDistanceToNow, differenceInDays } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import { nb } from 'date-fns/locale'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
-const availabilityLabels: Record<AvailabilityStatus, string> = {
-  available: 'Tilgjengelig',
-  available_soon: 'Snart tilgjengelig',
-  on_assignment: 'På oppdrag',
-  unavailable: 'Utilgjengelig',
-  inactive: 'Inaktiv',
+const availabilityConfig: Record<AvailabilityStatus, { label: string; color: string; bg: string }> = {
+  available: { label: 'Tilgjengelig', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  available_soon: { label: 'Snart tilgjengelig', color: 'text-amber-700', bg: 'bg-amber-50' },
+  on_assignment: { label: 'På oppdrag', color: 'text-blue-700', bg: 'bg-blue-50' },
+  unavailable: { label: 'Utilgjengelig', color: 'text-muted-foreground', bg: 'bg-muted' },
+  inactive: { label: 'Inaktiv', color: 'text-muted-foreground', bg: 'bg-muted' },
 }
 
-const complianceConfig: Record<ComplianceStatus, { label: string; icon: typeof CheckCircle; signalStatus: 'available' | 'available_soon' | 'unavailable' | 'inactive' }> = {
-  not_started: { label: 'Ikke startet', icon: Clock, signalStatus: 'inactive' },
-  documents_pending: { label: 'Dokumenter mangler', icon: AlertTriangle, signalStatus: 'available_soon' },
-  review_pending: { label: 'Under vurdering', icon: Clock, signalStatus: 'available_soon' },
-  approved: { label: 'Godkjent', icon: CheckCircle, signalStatus: 'available' },
-  expired: { label: 'Utløpt', icon: XCircle, signalStatus: 'unavailable' },
-  rejected: { label: 'Avvist', icon: XCircle, signalStatus: 'unavailable' },
+const complianceConfig: Record<ComplianceStatus, { label: string; icon: typeof CheckCircle; color: string; bg: string }> = {
+  not_started: { label: 'Ikke startet', icon: Clock, color: 'text-muted-foreground', bg: 'bg-muted' },
+  documents_pending: { label: 'Dokumenter mangler', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
+  review_pending: { label: 'Under vurdering', icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+  approved: { label: 'Godkjent', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  expired: { label: 'Utløpt', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
+  rejected: { label: 'Avvist', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
 }
 
 export default function CandidateProfilePage({ params }: PageProps) {
@@ -86,10 +94,6 @@ export default function CandidateProfilePage({ params }: PageProps) {
       if (e.key === 'e' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         router.push(`/candidates/${id}/edit`)
-      }
-      if (e.key === 'm' && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault()
-        toast.info('Quick Match kommer snart')
       }
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey && candidate?.phone) {
         e.preventDefault()
@@ -190,6 +194,11 @@ export default function CandidateProfilePage({ params }: PageProps) {
     }
   }
 
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text)
+    toast.success(`${label} kopiert`)
+  }
+
   if (isLoading) {
     return <CandidateProfileSkeleton />
   }
@@ -198,19 +207,16 @@ export default function CandidateProfilePage({ params }: PageProps) {
     notFound()
   }
 
-  const availability = candidate.availability_status as AvailabilityStatus || 'available'
+  const availability = availabilityConfig[candidate.availability_status as AvailabilityStatus] || availabilityConfig.available
   const compliance = complianceConfig[candidate.compliance_status as keyof typeof complianceConfig] || complianceConfig.not_started
   const ComplianceIcon = compliance.icon
   const raw = candidate._raw
   const hasCv = !!raw?.cv_file_path || !!candidate.cv_key
-  const { score: profileScore, missing: missingFields } = calculateProfileCompleteness(candidate)
+  const { score: profileScore } = calculateProfileCompleteness(candidate)
 
   const firstInitial = candidate.first_name?.[0] || ''
   const lastInitial = candidate.last_name?.[0] || ''
   const initials = (firstInitial + lastInitial).toUpperCase() || '??'
-
-  // Format candidate ID
-  const displayId = `#BC-${id.slice(0, 4).toUpperCase()}`
 
   // Get certification stats
   const activeCerts = candidate.certifications?.filter(c => !c.expiry_date || new Date(c.expiry_date) > new Date()) || []
@@ -219,202 +225,200 @@ export default function CandidateProfilePage({ params }: PageProps) {
     const daysUntil = differenceInDays(new Date(c.expiry_date), new Date())
     return daysUntil > 0 && daysUntil <= 90
   }) || []
-  const expiredCerts = candidate.certifications?.filter(c => c.expiry_date && new Date(c.expiry_date) < new Date()) || []
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
-      {/* Background gradient */}
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_55%),radial-gradient(circle_at_25%_35%,_rgba(160,133,99,0.12),_transparent_45%)]" />
-
-      {/* Intel Briefing Header */}
-      <div className="border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <PageHeader
-            coordinates={[
-              { label: 'COMMAND', href: '/' },
-              { label: 'PERSONELL', href: '/candidates' },
-              { label: 'INTEL BRIEFING' },
-            ]}
-            title=""
-            systemStatus="live"
-            className="mb-0 p-0 bg-transparent border-0 backdrop-blur-none"
-          />
-
-          {/* Name + Signal Light + ID */}
-          <div className="flex items-center gap-4 mt-4">
-            <SignalLight
-              status={getSignalStatus(availability)}
-              size="lg"
-              className="w-4 h-4"
-            />
-            <h1 className="text-3xl font-bold tracking-tight">
-              {candidate.first_name} {candidate.last_name}
-            </h1>
-            <span className="text-tactical text-gold-400 font-mono text-lg">
-              {displayId}
-            </span>
-            <Badge
-              variant="outline"
-              className="ml-2 border-gold-500/30 bg-gold-500/10 text-gold-400 text-tactical"
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-card border-b border-border">
+        <div className="max-w-6xl mx-auto px-6">
+          {/* Back nav */}
+          <div className="py-3 border-b border-border/50">
+            <Link
+              href="/candidates"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              {availabilityLabels[availability]}
-            </Badge>
+              <ChevronLeft className="h-4 w-4" />
+              Kandidater
+            </Link>
           </div>
 
-          <p className="text-muted-foreground mt-1 text-sm">
-            {candidate.primary_role}
-            {candidate.secondary_roles?.length > 0 && ` / ${candidate.secondary_roles.join(', ')}`}
-          </p>
-        </div>
-      </div>
+          {/* Profile header */}
+          <div className="py-6 flex items-start justify-between">
+            <div className="flex items-center gap-5">
+              <Avatar className="h-16 w-16 ring-2 ring-white shadow-lg">
+                <AvatarImage src={candidate.avatar_url || undefined} />
+                <AvatarFallback className="text-lg font-medium bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
 
-      {/* Main Content - Split Layout */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-10 gap-6">
-
-          {/* Left Column - Profile Summary (30%) */}
-          <div className="col-span-3 space-y-4">
-
-            {/* Profile Card */}
-            <div className="glass-panel rounded-xl p-5 card-tactical">
-              <div className="flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 ring-2 ring-gold-500/30 mb-4">
-                  <AvatarImage src={candidate.avatar_url || undefined} />
-                  <AvatarFallback className="text-2xl bg-navy-800 text-gold-400">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-
-                {candidate.internal_rating && (
-                  <div className="flex items-center gap-1.5 mb-3">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={cn(
-                          'h-4 w-4',
-                          star <= candidate.internal_rating!
-                            ? 'text-gold-400 fill-gold-400'
-                            : 'text-slate-600'
-                        )}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Contact Info */}
-                <div className="w-full space-y-2 mt-2">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-semibold text-foreground">
+                    {candidate.first_name} {candidate.last_name}
+                  </h1>
+                  <Badge className={cn('font-medium', availability.bg, availability.color)}>
+                    {availability.label}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground mt-0.5">
+                  {candidate.primary_role || 'Rolle ikke angitt'}
+                </p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                   {candidate.email && (
-                    <a
-                      href={`mailto:${candidate.email}`}
-                      className="flex items-center gap-2 text-sm text-slate-300 hover:text-gold-400 transition-colors"
+                    <button
+                      onClick={() => copyToClipboard(candidate.email!, 'E-post')}
+                      className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                     >
-                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="truncate">{candidate.email}</span>
-                    </a>
+                      <Mail className="h-3.5 w-3.5" />
+                      {candidate.email}
+                    </button>
                   )}
                   {candidate.phone && (
                     <a
                       href={`tel:${candidate.phone}`}
-                      className="flex items-center gap-2 text-sm text-slate-300 hover:text-gold-400 transition-colors"
+                      className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                     >
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{candidate.phone}</span>
+                      <Phone className="h-3.5 w-3.5" />
+                      {candidate.phone}
                     </a>
                   )}
                   {candidate._raw?.address_city && (
-                    <div className="flex items-center gap-2 text-sm text-slate-400">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{candidate._raw.address_city}</span>
-                    </div>
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {candidate._raw.address_city}
+                    </span>
                   )}
-                </div>
-              </div>
-
-              {/* Metrics Footer */}
-              <div className="metrics-footer -mx-5 -mb-5 mt-5 p-4 rounded-b-xl">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-tactical text-muted-foreground text-[10px] mb-1">ERFARING</div>
-                    <div className="text-lg font-semibold text-gold-400 font-mono">
-                      {candidate.experience_years || 0}<span className="text-xs text-muted-foreground ml-1">ÅR</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-tactical text-muted-foreground text-[10px] mb-1">PROFIL</div>
-                    <div className="text-lg font-semibold font-mono">
-                      <span className={cn(
-                        profileScore >= 70 ? 'text-emerald-400' :
-                        profileScore >= 40 ? 'text-amber-400' : 'text-rose-400'
-                      )}>
-                        {profileScore}%
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-tactical text-muted-foreground text-[10px] mb-1">SERTIFIKATER</div>
-                    <div className="text-lg font-semibold text-gold-400 font-mono">
-                      {activeCerts.length}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-tactical text-muted-foreground text-[10px] mb-1">COMPLIANCE</div>
-                    <div className="flex items-center gap-1.5">
-                      <SignalLight status={compliance.signalStatus} size="sm" />
-                      <span className="text-xs text-slate-300">{compliance.label}</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Certification Badges */}
-            {activeCerts.length > 0 && (
-              <div className="glass-panel rounded-xl p-4 card-tactical">
-                <div className="text-tactical text-muted-foreground text-[10px] mb-3">KLARERING</div>
-                <div className="flex flex-wrap gap-2">
-                  {activeCerts.slice(0, 6).map((cert) => (
-                    <Badge
-                      key={cert.id}
-                      variant="outline"
-                      className="border-gold-500/20 bg-gold-500/5 text-gold-300 text-xs"
-                    >
-                      <Shield className="h-3 w-3 mr-1" />
-                      {cert.code}
-                    </Badge>
-                  ))}
-                  {activeCerts.length > 6 && (
-                    <Badge variant="outline" className="border-slate-500/20 text-slate-400 text-xs">
-                      +{activeCerts.length - 6}
-                    </Badge>
-                  )}
-                </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddToFavorites}
+                className="text-muted-foreground"
+              >
+                <Heart className="h-4 w-4 mr-1.5" />
+                Favoritt
+              </Button>
+              <Link href={`/candidates/${id}/edit`}>
+                <Button size="sm">
+                  <Edit className="h-4 w-4 mr-1.5" />
+                  Rediger
+                </Button>
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => copyToClipboard(window.location.href, 'Link')}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Kopier link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => candidate.phone && (window.location.href = `tel:${candidate.phone}`)}>
+                    <Phone className="h-4 w-4 mr-2" />
+                    Ring kandidat
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleArchive} className="text-red-600">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Arkiver
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-3 gap-8">
+
+          {/* Left Column - Stats & Quick Info */}
+          <div className="space-y-6">
+
+            {/* Profile Completion */}
+            <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-foreground">Profil fullført</span>
+                <span className="text-sm font-semibold text-foreground">{profileScore}%</span>
               </div>
-            )}
+              <Progress value={profileScore} className="h-2" />
+            </div>
+
+            {/* Quick Stats */}
+            <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Oversikt</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Erfaring</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {candidate.experience_years || 0} år
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Sertifikater</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {activeCerts.length} aktive
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Compliance</span>
+                  <Badge className={cn('font-medium', compliance.bg, compliance.color)}>
+                    {compliance.label}
+                  </Badge>
+                </div>
+                {candidate.internal_rating && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Rating</span>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={cn(
+                            'h-4 w-4',
+                            star <= candidate.internal_rating!
+                              ? 'text-amber-400 fill-amber-400'
+                              : 'text-slate-200'
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Pools */}
             {candidate.pools && candidate.pools.length > 0 && (
-              <div className="glass-panel rounded-xl p-4 card-tactical">
-                <div className="text-tactical text-muted-foreground text-[10px] mb-3">POOLS</div>
+              <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Pools</h3>
                 <div className="space-y-2">
                   {candidate.pools.map((pool) => (
                     <div
                       key={pool.id}
-                      className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/5 group"
+                      className="flex items-center justify-between group"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
                         <div
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: pool.color }}
                         />
-                        <span className="text-sm">{pool.name}</span>
+                        <span className="text-sm text-foreground">{pool.name}</span>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => handleRemoveFromPool(pool.id, pool.name)}
                       >
-                        <XCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                        <XCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
                       </Button>
                     </div>
                   ))}
@@ -424,11 +428,11 @@ export default function CandidateProfilePage({ params }: PageProps) {
 
             {/* Tags */}
             {candidate.tags && candidate.tags.length > 0 && (
-              <div className="glass-panel rounded-xl p-4 card-tactical">
-                <div className="text-tactical text-muted-foreground text-[10px] mb-3">TAGS</div>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Tags</h3>
+                <div className="flex flex-wrap gap-2">
                   {candidate.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs bg-white/5">
+                    <Badge key={tag} variant="secondary" className="bg-muted text-foreground">
                       {tag}
                     </Badge>
                   ))}
@@ -437,172 +441,78 @@ export default function CandidateProfilePage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Right Column - Tabbed Content (70%) */}
-          <div className="col-span-7">
-            <Tabs defaultValue="clearance" className="w-full">
-              <TabsList className="w-full justify-start bg-white/5 border border-white/10 p-1 h-auto">
-                <TabsTrigger value="clearance" className="text-tactical data-[state=active]:bg-gold-500/20 data-[state=active]:text-gold-400">
-                  <Shield className="h-3.5 w-3.5 mr-1.5" />
-                  KLARERING
+          {/* Right Column - Tabbed Content */}
+          <div className="col-span-2">
+            <Tabs defaultValue="profile" className="w-full">
+              <TabsList className="bg-card border border-border p-1 h-auto rounded-lg shadow-sm mb-6">
+                <TabsTrigger
+                  value="profile"
+                  className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-md px-4 py-2"
+                >
+                  Profil
                 </TabsTrigger>
-                <TabsTrigger value="intel" className="text-tactical data-[state=active]:bg-gold-500/20 data-[state=active]:text-gold-400">
-                  <User className="h-3.5 w-3.5 mr-1.5" />
-                  INTEL
+                <TabsTrigger
+                  value="certifications"
+                  className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-md px-4 py-2"
+                >
+                  Sertifikater
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="text-tactical data-[state=active]:bg-gold-500/20 data-[state=active]:text-gold-400">
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
-                  DOKUMENTER
+                <TabsTrigger
+                  value="documents"
+                  className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-md px-4 py-2"
+                >
+                  Dokumenter
                 </TabsTrigger>
-                <TabsTrigger value="mission-log" className="text-tactical data-[state=active]:bg-gold-500/20 data-[state=active]:text-gold-400">
-                  <History className="h-3.5 w-3.5 mr-1.5" />
-                  MISSION LOG
+                <TabsTrigger
+                  value="history"
+                  className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-md px-4 py-2"
+                >
+                  Historikk
                 </TabsTrigger>
               </TabsList>
 
-              {/* Clearance Tab - Certification Grid */}
-              <TabsContent value="clearance" className="mt-4">
-                <div className="glass-panel rounded-xl p-5 card-tactical">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-tactical text-muted-foreground">CLEARANCE CARDS</div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="flex items-center gap-1.5">
-                        <SignalLight status="available" size="sm" showPulse={false} />
-                        <span className="text-muted-foreground">Gyldig ({activeCerts.length})</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <SignalLight status="available_soon" size="sm" showPulse={false} />
-                        <span className="text-muted-foreground">Utløper snart ({expiringCerts.length})</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <SignalLight status="unavailable" size="sm" showPulse={false} />
-                        <span className="text-muted-foreground">Utløpt ({expiredCerts.length})</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {candidate.certifications && candidate.certifications.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {candidate.certifications.map((cert) => {
-                        const isExpired = cert.expiry_date && new Date(cert.expiry_date) < new Date()
-                        const isExpiringSoon = cert.expiry_date && !isExpired && differenceInDays(new Date(cert.expiry_date), new Date()) <= 90
-
-                        let signalStatus: 'available' | 'available_soon' | 'unavailable' = 'available'
-                        if (isExpired) signalStatus = 'unavailable'
-                        else if (isExpiringSoon) signalStatus = 'available_soon'
-
-                        return (
-                          <div
-                            key={cert.id}
-                            className={cn(
-                              'relative p-4 rounded-lg border card-tactical',
-                              'bg-slate-900/50',
-                              isExpired && 'border-red-500/30 bg-red-950/20',
-                              isExpiringSoon && !isExpired && 'border-amber-500/30 bg-amber-950/20'
-                            )}
-                          >
-                            <div className="absolute top-3 right-3">
-                              <SignalLight status={signalStatus} size="sm" />
-                            </div>
-
-                            <div className="pr-6">
-                              <div className="text-tactical text-gold-400 text-sm font-semibold">
-                                {cert.code}
-                              </div>
-                              <div className="text-sm text-slate-300 mt-1">
-                                {cert.name}
-                              </div>
-                              {cert.issuer && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {cert.issuer}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="mt-3 pt-3 border-t border-white/5">
-                              {cert.expiry_date ? (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-coordinates">UTLØPER</span>
-                                  <span className={cn(
-                                    'font-mono text-xs',
-                                    isExpired ? 'text-red-400' :
-                                    isExpiringSoon ? 'text-amber-400' : 'text-slate-400'
-                                  )}>
-                                    {format(new Date(cert.expiry_date), 'dd.MM.yyyy')}
-                                  </span>
-                                </div>
-                              ) : cert.is_permanent ? (
-                                <div className="flex items-center justify-between">
-                                  <span className="text-coordinates">STATUS</span>
-                                  <Badge variant="outline" className="text-xs border-emerald-500/30 text-emerald-400">
-                                    PERMANENT
-                                  </Badge>
-                                </div>
-                              ) : null}
-
-                              {cert.document_verified && (
-                                <div className="flex items-center gap-1 mt-2 text-xs text-emerald-400">
-                                  <CheckCircle className="h-3 w-3" />
-                                  <span>Verifisert</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Shield className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p>Ingen sertifikater registrert</p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Intel Tab */}
-              <TabsContent value="intel" className="mt-4 space-y-4">
+              {/* Profile Tab */}
+              <TabsContent value="profile" className="space-y-6">
                 {/* CV Summary */}
                 {candidate.cv_summary && (
-                  <div className="glass-panel rounded-xl p-5 card-tactical">
-                    <div className="text-tactical text-muted-foreground mb-3">CV SAMMENDRAG</div>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                    <h3 className="text-base font-semibold text-foreground mb-3">Om kandidaten</h3>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                       {candidate.cv_summary}
                     </p>
                   </div>
                 )}
 
-                {/* Experience & Sectors */}
-                <div className="glass-panel rounded-xl p-5 card-tactical">
-                  <div className="text-tactical text-muted-foreground mb-4">ERFARING & KOMPETANSE</div>
-
+                {/* Experience */}
+                <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                  <h3 className="text-base font-semibold text-foreground mb-4">Erfaring & Kompetanse</h3>
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Briefcase className="h-4 w-4 text-gold-400" />
-                        <span className="text-sm font-medium">Total erfaring</span>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <Briefcase className="h-4 w-4" />
+                        <span className="text-sm">Total erfaring</span>
                       </div>
-                      <div className="text-2xl font-bold text-gold-400 font-mono">
-                        {candidate.experience_years || 0} <span className="text-sm text-muted-foreground">år</span>
-                      </div>
+                      <p className="text-xl font-semibold text-foreground">
+                        {candidate.experience_years || 0} år
+                      </p>
                     </div>
-
                     <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Anchor className="h-4 w-4 text-gold-400" />
-                        <span className="text-sm font-medium">Primær rolle</span>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <Anchor className="h-4 w-4" />
+                        <span className="text-sm">Primær rolle</span>
                       </div>
-                      <div className="text-sm text-slate-300">
+                      <p className="text-foreground font-medium">
                         {candidate.primary_role || 'Ikke angitt'}
-                      </div>
+                      </p>
                     </div>
                   </div>
 
                   {candidate.secondary_roles && candidate.secondary_roles.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <div className="text-xs text-muted-foreground mb-2">SEKUNDÆRE ROLLER</div>
+                    <div className="mt-5 pt-5 border-t border-border/50">
+                      <p className="text-sm text-muted-foreground mb-2">Sekundære roller</p>
                       <div className="flex flex-wrap gap-2">
                         {candidate.secondary_roles.map((role) => (
-                          <Badge key={role} variant="outline" className="text-xs">
+                          <Badge key={role} variant="outline" className="bg-card">
                             {role}
                           </Badge>
                         ))}
@@ -611,11 +521,11 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   )}
 
                   {candidate.sectors && candidate.sectors.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <div className="text-xs text-muted-foreground mb-2">SEKTORER</div>
+                    <div className="mt-5 pt-5 border-t border-border/50">
+                      <p className="text-sm text-muted-foreground mb-2">Sektorer</p>
                       <div className="flex flex-wrap gap-2">
                         {candidate.sectors.map((sector) => (
-                          <Badge key={sector} variant="secondary" className="text-xs bg-white/5">
+                          <Badge key={sector} variant="secondary" className="bg-muted">
                             {sector}
                           </Badge>
                         ))}
@@ -624,87 +534,121 @@ export default function CandidateProfilePage({ params }: PageProps) {
                   )}
                 </div>
 
-                {/* Availability Details */}
-                <div className="glass-panel rounded-xl p-5 card-tactical">
-                  <div className="text-tactical text-muted-foreground mb-4">TILGJENGELIGHET</div>
-
-                  <div className="flex items-center gap-3 mb-4">
-                    <SignalLight status={getSignalStatus(availability)} size="lg" />
+                {/* Availability */}
+                <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                  <h3 className="text-base font-semibold text-foreground mb-4">Tilgjengelighet</h3>
+                  <div className="flex items-center gap-3">
+                    <div className={cn('h-3 w-3 rounded-full',
+                      candidate.availability_status === 'available' ? 'bg-emerald-500' :
+                      candidate.availability_status === 'available_soon' ? 'bg-amber-500' :
+                      candidate.availability_status === 'on_assignment' ? 'bg-blue-500' : 'bg-muted-foreground'
+                    )} />
                     <div>
-                      <div className="font-medium">{availabilityLabels[availability]}</div>
+                      <p className="font-medium text-foreground">{availability.label}</p>
                       {candidate.availability_date && (
-                        <div className="text-sm text-muted-foreground">
-                          Fra {format(new Date(candidate.availability_date), 'dd.MM.yyyy', { locale: nb })}
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Fra {format(new Date(candidate.availability_date), 'd. MMMM yyyy', { locale: nb })}
+                        </p>
                       )}
                     </div>
-                  </div>
-
-                  {/* Compliance */}
-                  <div className="pt-4 border-t border-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ComplianceIcon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Compliance status</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <SignalLight status={compliance.signalStatus} size="sm" />
-                        <span className="text-sm">{compliance.label}</span>
-                      </div>
-                    </div>
-                    {raw?.compliance_checked_at && (
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Sist sjekket: {format(new Date(raw.compliance_checked_at), 'dd.MM.yyyy')}
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {/* Internal Notes */}
                 {candidate.internal_notes && (
-                  <div className="glass-panel rounded-xl p-5 card-tactical">
-                    <div className="text-tactical text-muted-foreground mb-3">INTERNE NOTATER</div>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                  <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                    <h3 className="text-base font-semibold text-foreground mb-3">Interne notater</h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
                       {candidate.internal_notes}
                     </p>
                   </div>
                 )}
+              </TabsContent>
 
-                {/* Metadata */}
-                <div className="glass-panel rounded-xl p-5 card-tactical">
-                  <div className="text-tactical text-muted-foreground mb-3">METADATA</div>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    {raw?.created_at && (
-                      <div>
-                        <div className="text-coordinates mb-1">OPPRETTET</div>
-                        <div className="font-mono text-slate-300">
-                          {format(new Date(raw.created_at), 'dd.MM.yyyy')}
-                        </div>
-                      </div>
-                    )}
-                    {raw?.updated_at && (
-                      <div>
-                        <div className="text-coordinates mb-1">SIST OPPDATERT</div>
-                        <div className="font-mono text-slate-300">
-                          {format(new Date(raw.updated_at), 'dd.MM.yyyy')}
-                        </div>
-                      </div>
-                    )}
-                    {raw?.source && (
-                      <div>
-                        <div className="text-coordinates mb-1">KILDE</div>
-                        <div className="text-slate-300">{raw.source}</div>
-                      </div>
-                    )}
+              {/* Certifications Tab */}
+              <TabsContent value="certifications" className="space-y-6">
+                <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-base font-semibold text-foreground">Sertifikater</h3>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="text-muted-foreground">Gyldig ({activeCerts.length})</span>
+                      </span>
+                      {expiringCerts.length > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 rounded-full bg-amber-500" />
+                          <span className="text-muted-foreground">Utløper snart ({expiringCerts.length})</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {candidate.certifications && candidate.certifications.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {candidate.certifications.map((cert) => {
+                        const isExpired = cert.expiry_date && new Date(cert.expiry_date) < new Date()
+                        const isExpiringSoon = cert.expiry_date && !isExpired && differenceInDays(new Date(cert.expiry_date), new Date()) <= 90
+
+                        return (
+                          <div
+                            key={cert.id}
+                            className={cn(
+                              'p-4 rounded-lg border transition-colors',
+                              isExpired
+                                ? 'border-red-200 bg-red-50'
+                                : isExpiringSoon
+                                  ? 'border-amber-200 bg-amber-50'
+                                  : 'border-border bg-muted hover:bg-muted'
+                            )}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-semibold text-foreground">{cert.code}</p>
+                                <p className="text-sm text-muted-foreground mt-0.5">{cert.name}</p>
+                                {cert.issuer && (
+                                  <p className="text-xs text-muted-foreground mt-1">{cert.issuer}</p>
+                                )}
+                              </div>
+                              {cert.document_verified && (
+                                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                              )}
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-border/50">
+                              {cert.expiry_date ? (
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">Utløper</span>
+                                  <span className={cn(
+                                    'font-medium',
+                                    isExpired ? 'text-red-600' :
+                                    isExpiringSoon ? 'text-amber-600' : 'text-foreground'
+                                  )}>
+                                    {format(new Date(cert.expiry_date), 'd. MMM yyyy', { locale: nb })}
+                                  </span>
+                                </div>
+                              ) : cert.is_permanent ? (
+                                <Badge className="bg-emerald-100 text-emerald-700">Permanent</Badge>
+                              ) : null}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Shield className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                      <p className="text-muted-foreground">Ingen sertifikater registrert</p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
               {/* Documents Tab */}
-              <TabsContent value="documents" className="mt-4">
-                <div className="glass-panel rounded-xl p-5 card-tactical">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-tactical text-muted-foreground">DOKUMENTARKIV</div>
+              <TabsContent value="documents" className="space-y-6">
+                <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-base font-semibold text-foreground">Dokumenter</h3>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -717,38 +661,37 @@ export default function CandidateProfilePage({ params }: PageProps) {
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadCv.isPending}
-                      className="text-tactical"
                     >
                       {uploadCv.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                       ) : (
-                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                        <Upload className="h-4 w-4 mr-1.5" />
                       )}
-                      LAST OPP
+                      Last opp
                     </Button>
                   </div>
 
                   {/* CV Card */}
                   <div className={cn(
-                    'p-4 rounded-lg border card-tactical mb-4',
-                    hasCv ? 'border-gold-500/20 bg-gold-500/5' : 'border-dashed border-slate-600'
+                    'p-4 rounded-lg border-2 border-dashed transition-colors',
+                    hasCv ? 'border-border bg-muted' : 'border-slate-300 bg-muted/50'
                   )}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          'p-2 rounded-lg',
-                          hasCv ? 'bg-gold-500/10' : 'bg-slate-800'
+                          'p-2.5 rounded-lg',
+                          hasCv ? 'bg-blue-100' : 'bg-muted'
                         )}>
                           <FileText className={cn(
                             'h-5 w-5',
-                            hasCv ? 'text-gold-400' : 'text-slate-500'
+                            hasCv ? 'text-blue-600' : 'text-muted-foreground'
                           )} />
                         </div>
                         <div>
-                          <div className="font-medium">Curriculum Vitae</div>
-                          <div className="text-xs text-muted-foreground">
-                            {hasCv ? 'PDF/DOC tilgjengelig' : 'Ikke lastet opp'}
-                          </div>
+                          <p className="font-medium text-foreground">CV</p>
+                          <p className="text-sm text-muted-foreground">
+                            {hasCv ? 'PDF/Word dokument' : 'Ikke lastet opp'}
+                          </p>
                         </div>
                       </div>
                       {hasCv && (
@@ -757,77 +700,58 @@ export default function CandidateProfilePage({ params }: PageProps) {
                           size="sm"
                           onClick={handleDownloadCv}
                           disabled={isDownloadingCv}
-                          className="text-tactical"
                         >
                           {isDownloadingCv ? (
-                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                           ) : (
-                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            <ExternalLink className="h-4 w-4 mr-1.5" />
                           )}
-                          ÅPNE
+                          Åpne
                         </Button>
                       )}
                     </div>
                   </div>
 
                   {/* Other Documents */}
-                  {candidate.documents && candidate.documents.length > 0 ? (
-                    <div className="space-y-2">
+                  {candidate.documents && candidate.documents.length > 0 && (
+                    <div className="mt-4 space-y-2">
                       {candidate.documents.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted transition-colors">
                           <div className="flex items-center gap-3">
                             <FileText className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <div className="text-sm font-medium">{doc.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {doc.type} - {format(new Date(doc.uploaded_at), 'dd.MM.yyyy')}
-                              </div>
+                              <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                              <p className="text-xs text-muted-foreground">{doc.type}</p>
                             </div>
                           </div>
-                          <Button variant="ghost" size="sm" className="text-tactical">
-                            <Download className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
-                    </div>
-                  ) : !hasCv && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p>Ingen dokumenter lastet opp</p>
                     </div>
                   )}
                 </div>
               </TabsContent>
 
-              {/* Mission Log Tab */}
-              <TabsContent value="mission-log" className="mt-4">
-                <div className="glass-panel rounded-xl p-5 card-tactical">
-                  <div className="text-tactical text-muted-foreground mb-4">OPPDRAGSLOGG</div>
+              {/* History Tab */}
+              <TabsContent value="history" className="space-y-6">
+                <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                  <h3 className="text-base font-semibold text-foreground mb-6">Aktivitetslogg</h3>
 
-                  {/* Mission Timeline */}
                   <div className="relative">
-                    {/* Vertical gold line */}
-                    <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-gold-500 via-gold-500/50 to-transparent" />
+                    <div className="absolute left-2 top-2 bottom-2 w-px bg-muted" />
 
-                    {/* Timeline entries - placeholder for now */}
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {raw?.created_at && (
                         <div className="relative flex gap-4 pl-8">
-                          <div className="absolute left-0 top-1">
-                            <div className="h-[22px] w-[22px] rounded-full bg-slate-900 border-2 border-gold-500 flex items-center justify-center">
-                              <User className="h-3 w-3 text-gold-400" />
-                            </div>
+                          <div className="absolute left-0 top-0.5">
+                            <div className="h-4 w-4 rounded-full bg-blue-500 ring-4 ring-white" />
                           </div>
-                          <div className="flex-1 pb-4">
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="text-sm font-medium">Profil opprettet</span>
-                              <span className="text-coordinates">
-                                {format(new Date(raw.created_at), 'dd.MM.yyyy HH:mm')}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Kandidat registrert i systemet
-                              {raw.source && ` via ${raw.source}`}
+                          <div>
+                            <p className="font-medium text-foreground">Profil opprettet</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {format(new Date(raw.created_at), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
                             </p>
                           </div>
                         </div>
@@ -835,20 +759,13 @@ export default function CandidateProfilePage({ params }: PageProps) {
 
                       {raw?.updated_at && raw.updated_at !== raw.created_at && (
                         <div className="relative flex gap-4 pl-8">
-                          <div className="absolute left-0 top-1">
-                            <div className="h-[22px] w-[22px] rounded-full bg-slate-900 border-2 border-slate-600 flex items-center justify-center">
-                              <Edit className="h-3 w-3 text-slate-400" />
-                            </div>
+                          <div className="absolute left-0 top-0.5">
+                            <div className="h-4 w-4 rounded-full bg-muted-foreground ring-4 ring-white" />
                           </div>
-                          <div className="flex-1 pb-4">
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="text-sm font-medium">Profil oppdatert</span>
-                              <span className="text-coordinates">
-                                {format(new Date(raw.updated_at), 'dd.MM.yyyy HH:mm')}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Siste endring i kandidatprofil
+                          <div>
+                            <p className="font-medium text-foreground">Profil oppdatert</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {format(new Date(raw.updated_at), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
                             </p>
                           </div>
                         </div>
@@ -856,30 +773,22 @@ export default function CandidateProfilePage({ params }: PageProps) {
 
                       {raw?.compliance_checked_at && (
                         <div className="relative flex gap-4 pl-8">
-                          <div className="absolute left-0 top-1">
-                            <div className="h-[22px] w-[22px] rounded-full bg-slate-900 border-2 border-emerald-500 flex items-center justify-center">
-                              <CheckCircle className="h-3 w-3 text-emerald-400" />
-                            </div>
+                          <div className="absolute left-0 top-0.5">
+                            <div className="h-4 w-4 rounded-full bg-emerald-500 ring-4 ring-white" />
                           </div>
-                          <div className="flex-1 pb-4">
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="text-sm font-medium">Compliance sjekket</span>
-                              <span className="text-coordinates">
-                                {format(new Date(raw.compliance_checked_at), 'dd.MM.yyyy HH:mm')}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Status: {compliance.label}
+                          <div>
+                            <p className="font-medium text-foreground">Compliance sjekket</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {format(new Date(raw.compliance_checked_at), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
                             </p>
                           </div>
                         </div>
                       )}
 
-                      {/* No history placeholder */}
                       {!raw?.created_at && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <History className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                          <p>Ingen historikk tilgjengelig</p>
+                        <div className="text-center py-8">
+                          <History className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                          <p className="text-muted-foreground">Ingen historikk tilgjengelig</p>
                         </div>
                       )}
                     </div>
@@ -890,97 +799,43 @@ export default function CandidateProfilePage({ params }: PageProps) {
           </div>
         </div>
       </div>
-
-      {/* Fixed Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50">
-        <div className="glass-panel border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-6 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link href="/candidates">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
-                    Tilbake
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddToFavorites}
-                  className="text-tactical"
-                >
-                  <Star className="h-3.5 w-3.5 mr-1.5" />
-                  FAVORITT
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => candidate.phone && (window.location.href = `tel:${candidate.phone}`)}
-                  disabled={!candidate.phone}
-                  className="text-tactical"
-                >
-                  <Phone className="h-3.5 w-3.5 mr-1.5" />
-                  RING
-                  <kbd className="ml-2 px-1.5 py-0.5 text-[10px] bg-white/10 rounded">C</kbd>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-tactical"
-                  onClick={() => toast.info('Quick Match kommer snart')}
-                >
-                  <Target className="h-3.5 w-3.5 mr-1.5" />
-                  MATCH
-                  <kbd className="ml-2 px-1.5 py-0.5 text-[10px] bg-white/10 rounded">M</kbd>
-                </Button>
-
-                <Link href={`/candidates/${id}/edit`}>
-                  <Button
-                    size="sm"
-                    className="btn-gold text-tactical"
-                  >
-                    <Edit className="h-3.5 w-3.5 mr-1.5" />
-                    REDIGER
-                    <kbd className="ml-2 px-1.5 py-0.5 text-[10px] bg-black/20 rounded">E</kbd>
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
 
 function CandidateProfileSkeleton() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <Skeleton className="h-4 w-48 bg-slate-800 mb-4" />
-          <div className="flex items-center gap-4 mt-4">
-            <Skeleton className="h-4 w-4 rounded-full bg-slate-800" />
-            <Skeleton className="h-9 w-64 bg-slate-800" />
-            <Skeleton className="h-6 w-24 bg-slate-800" />
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="py-3 border-b border-border/50">
+            <Skeleton className="h-4 w-24" />
           </div>
-          <Skeleton className="h-4 w-48 bg-slate-800 mt-2" />
+          <div className="py-6 flex items-start justify-between">
+            <div className="flex items-center gap-5">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div>
+                <Skeleton className="h-8 w-48 mb-2" />
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-10 gap-6">
-          <div className="col-span-3 space-y-4">
-            <Skeleton className="h-80 w-full rounded-xl bg-slate-800" />
-            <Skeleton className="h-24 w-full rounded-xl bg-slate-800" />
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-3 gap-8">
+          <div className="space-y-6">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-48 w-full rounded-xl" />
           </div>
-          <div className="col-span-7">
-            <Skeleton className="h-12 w-full bg-slate-800 rounded-lg mb-4" />
-            <Skeleton className="h-96 w-full rounded-xl bg-slate-800" />
+          <div className="col-span-2">
+            <Skeleton className="h-12 w-full rounded-lg mb-6" />
+            <Skeleton className="h-64 w-full rounded-xl" />
           </div>
         </div>
       </div>
