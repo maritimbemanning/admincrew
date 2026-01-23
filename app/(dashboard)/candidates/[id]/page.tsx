@@ -321,10 +321,10 @@ export default function CandidateProfilePage({ params }: PageProps) {
                       <span>{candidate.phone}</span>
                     </a>
                   )}
-                  {(candidate.address_city || candidate._raw?.address_city) && (
+                  {candidate._raw?.address_city && (
                     <div className="flex items-center gap-2 text-sm text-slate-400">
                       <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{candidate.address_city || candidate._raw?.address_city}</span>
+                      <span>{candidate._raw.address_city}</span>
                     </div>
                   )}
                 </div>
