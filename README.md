@@ -1,13 +1,6 @@
 # AdminCrew - Maritime Operations Command Center
 
-Admin panel for Bluecrew.no - Managing candidates, assignments, and operations for maritime staffing.
-
-## Tech Stack
-- **Framework:** Next.js 15 (App Router)
-- **UI:** Tailwind CSS + Shadcn UI + Framer Motion + Recharts
-- **Database:** Supabase (PostgreSQL) + Prisma ORM
-- **API:** tRPC + Next.js API Routes
-- **Auth:** Supabase Auth
+Admin panel for Bluecrew.no - Managing candidates, assignments, and operations for maritime, offshore and akvaculture staffing.
 
 ## Features
 - **Dashboard:** Real-time command center with placement velocity and revenue tracking.
@@ -30,5 +23,5 @@ Admin panel for Bluecrew.no - Managing candidates, assignments, and operations f
 3. Open [http://localhost:3000](http://localhost:3000)
 
 ## Database
-- Migrations are managed via Prisma and Supabase.
+- Migrations are managed by FIND OUT IN UR AUDIT PLEASE.
 - Run `npm run db:migrate` to apply changes.
